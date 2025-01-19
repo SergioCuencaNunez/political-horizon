@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="frontend/src/assets/404.png" alt="Logo" width="400">
+  <img src="frontend/src/assets/banner.png" alt="Logo" width="400">
 </p>
 
 ## See the Whole Picture, Not Just a Fragment
