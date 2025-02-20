@@ -11,13 +11,13 @@ const theme = extendTheme({
       body: {
         bg: mode('gray.100', 'gray.900')(props),
         color: mode('black', 'white')(props),
-        fontFamily: 'Montserrat, sans-serif'
+        fontFamily: 'Plus Jakarta Sans, serif'
       },
     }),
   },
   fonts: {
-    heading: 'Montserrat, sans-serif',
-    body: 'Montserrat, sans-serif',
+    heading: 'Plus Jakarta Sans, serif',
+    body: 'Plus Jakarta Sans, serif',
   },
   breakpoints: {
     sm: '30em',  // 480px
