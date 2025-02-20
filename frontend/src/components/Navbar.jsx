@@ -39,7 +39,7 @@ const Navbar = () => {
     const hoverColor = useColorModeValue(primaryHoverLight, primaryHoverDark);
     const activeColor = useColorModeValue(primaryActiveLight, primaryActiveDark);
     const logoHeight = useBreakpointValue({ base: '33px', md: '38px' });
-    const gradient = 'linear(to-r, #2a3a4a, #34495d, #3f5c76)';
+    const gradient = 'linear(to-r, #b0001a, #c6001e, #e14f64)';
   
     if (['/login', '/signup', '/profile'].some(path => location.pathname.startsWith(path))) {
         return null;
