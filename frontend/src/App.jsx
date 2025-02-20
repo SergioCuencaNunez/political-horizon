@@ -71,9 +71,9 @@ const AuthLayout = ({ children, title, subtitle }) => {
                 style={{ width: '100%' }}
               >
                 <Box p="5" bg={boxBg} color={boxColor} shadow="md" borderRadius="md" w="full">
-                  <Heading size="md" mb="2">Real-Time Fact Checking</Heading>
+                  <Heading size="md" mb="2">Diverse News Exposure</Heading>
                   <Text mb="4">
-                    Use our advanced tools to verify claims instantly and combat misinformation effectively.
+                    Experience a balanced news experience by incorporating articles from a wide range of political perspectives.
                   </Text>
                 </Box>
               </motion.div>
@@ -84,9 +84,9 @@ const AuthLayout = ({ children, title, subtitle }) => {
                 style={{ width: '100%' }}
               >
               <Box p="5" bg={boxBg} color={boxColor} shadow="md" borderRadius="md" w="full">
-                  <Heading size="md" mb="2">AI-Powered Insights</Heading>
+                  <Heading size="md" mb="2">Bias Mitigation Strategies</Heading>
                   <Text mb="4">
-                    Harness the power of AI to analyze trends, detect fake news, and gain actionable insights.
+                    Our recommendation system integrates techniques to counteract bias and promote fairer news consumption.
                   </Text>
                 </Box>
               </motion.div>
@@ -97,9 +97,9 @@ const AuthLayout = ({ children, title, subtitle }) => {
                 style={{ width: '100%' }}
               >
                 <Box p="5" bg={boxBg} color={boxColor} shadow="md" borderRadius="md" w="full">
-                  <Heading size="md" mb="2">Built for Trust</Heading>
+                  <Heading size="md" mb="2">Empowering Informed Decisions</Heading>
                   <Text mb="4">
-                    A reliable platform designed to ensure authenticity and credibility in the information you consume.
+                    By analyzing political content with transparency, you can make informed decisions based on a wider range of perspectives.
                   </Text>
                 </Box>
               </motion.div>
@@ -169,8 +169,8 @@ function App() {
             path="/signup"
             element={
               <AuthLayout
-                title="Welcome to FactGuard"
-                subtitle="Register now and gain access to powerful tools to verify claims and combat misinformation."
+                title="Welcome to Political Horizon"
+                subtitle="Register now and explore a personalized, diverse, and balanced news recommendation experience."
               >
                 <SignUp />
               </AuthLayout>
@@ -181,7 +181,7 @@ function App() {
             element={
               <AuthLayout
                 title="Welcome Back"
-                subtitle="Log in to access your dashboard and continue ensuring authenticity in the information you consume."
+                subtitle="Log in to access your dashboard and engage with politically diverse news recommendations tailored to your interests."
               >
                 <Login />
               </AuthLayout>

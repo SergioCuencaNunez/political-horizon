@@ -14,14 +14,14 @@ import {
 } from '@chakra-ui/react';
 import { Link } from 'react-router-dom';
 import {
-  FaShieldAlt,
-  FaRobot,
+  FaBalanceScale,
+  FaChartPie,
+  FaUsers,
+  FaRegLightbulb,
+  FaSyncAlt,
   FaGlobe,
-  FaBolt,
-  FaSearch,
-  FaBookOpen,
-  FaCheckCircle,
-  FaTasks,
+  FaHandshake,
+  FaRegNewspaper,
   FaBrain
 } from 'react-icons/fa';
 import Marquee from 'react-fast-marquee';
@@ -53,18 +53,19 @@ const Home = () => {
   const benefitsImage = useColorModeValue(benefitsBright, benefitsDark);
   
   const heroText = useBreakpointValue({
-    base: "FactGuard supports transparency for fake news detection and claim verification. Join a community committed to accuracy.",
-    md: "FactGuard supports transparency with state-of-the-art tools for fake news detection, claim verification, and responsible content sharing. By leveraging Deep Learning, it is able to detect misinformation and uphold accuracy across the globe. Join a community committed to building a trustworthy and reliable media ecosystem.",
+    base: "Political Horizon promotes balanced and diverse political news recommendations. Join our community to experience news differently.",
+    md: "Political Horizon integrates advanced hybrid recommendation techniques combining Collaborative and Content-Based Filtering to ensure personalized yet diverse news exposure. Through bias mitigation approaches, we aim to break ideological silos, foster understanding across political spectrums, and support a balanced, informed democracy."
   });
 
   const discoverText = useBreakpointValue({
-    base: "FactGuard combats misinformation with powerful AI tools. Leverage real-time fact-checking to promote trust.",
-    md: "Our tools are designed to combat misinformation and empower users worldwide. Leverage our advanced DL-driven solutions to promote factual content and foster trust. FactGuard is not just a tool—it’s a commitment to ensuring the credibility of online information.",
+    base: "Political Horizon uses innovative strategies to reduce bias in political news recommendations.",
+    md: "Our hybrid recommendation system employs Controlled Exposure and Diversified Relevance techniques to balance personalized content with exposure to diverse political viewpoints. We aim to minimize ideological echo chambers, promoting informed and well-rounded political discourse."
   });
 
   const discoverTextLg = useBreakpointValue({
-    lg: "With FactGuard, you’ll access real-time fact-checking capabilities, educational resources, and a global network of verification partners. Whether you’re an individual, a team, or an organization, FactGuard is here to help you navigate a world of information with confidence.",
+    lg: "With Political Horizon, users experience a uniquely balanced news environment, continuously evaluated using metrics like Shannon entropy and the Gini index. Whether you lean left, right, or center, our system ensures a fair and transparent approach to news consumption, empowering you with comprehensive perspectives."
   });
+
   
   return (
     <VStack spacing="10" px={{ base: '0', xl: '5' }} w="100%">
@@ -83,7 +84,7 @@ const Home = () => {
         >
           <Box w={{ base: '100%', md: '55%' }} textAlign={{ base: 'center', md: 'left' }}>
             <Heading mb="4" fontSize={{ base: '3xl', md: '4xl' }}>
-              Discover the Power of FactGuard
+              Breaking Bias, Building Balance
             </Heading>
             <Text fontSize={{ base: 'md', md: 'lg' }} mb="3">
               {discoverText}
@@ -94,7 +95,7 @@ const Home = () => {
           </Box>
           <Image
             src={discoverImage}
-            alt="Fake news detection illustration"
+            alt="Politician Illustration"
             w={{ base: '66%', sm: '46%' ,md: '41%', lg: '36%', xl: '26%' }}
             mx={{ base: 'auto', md: '0' }}
           />
@@ -115,7 +116,7 @@ const Home = () => {
           borderRadius="md"
           textAlign="center"
         >
-          <Heading mb="4" fontSize={{ base: '2xl', md: '3xl' }}>Empowering Truth in a World of Noise</Heading>
+          <Heading mb="4" fontSize={{ base: '2xl', md: '3xl' }}>Balancing Perspectives in Political News</Heading>
           <Text fontSize={{ base: 'sm', md: 'md' }} mb="3">
             {heroText}
           </Text>
@@ -160,7 +161,7 @@ const Home = () => {
               lineHeight: '1.5',
             }}
           >
-            Empowering Truth
+            Balanced Perspectives
           </Text>
           <Text
             fontSize="lg"
@@ -172,7 +173,7 @@ const Home = () => {
               lineHeight: '1.5',
             }}
           >
-            Fact-Checking Simplified
+            Diverse Exposure
           </Text>
           <Text
             fontSize="lg"
@@ -184,7 +185,7 @@ const Home = () => {
               lineHeight: '1.5',
             }}
           >
-            Verify Claims Instantly
+            Breaking Echo Chambers
           </Text>
           <Text
             fontSize="lg"
@@ -196,7 +197,7 @@ const Home = () => {
               lineHeight: '1.5',
             }}
           >
-            AI-Powered Verification
+            Innovative Recommendations
           </Text>
           <Text
             fontSize="lg"
@@ -208,7 +209,7 @@ const Home = () => {
               lineHeight: '1.5',
             }}
           >
-            Promoting Media Literacy
+            Fair News Environment
           </Text>
         </Marquee>
       </Box>
@@ -221,39 +222,39 @@ const Home = () => {
         transition={{ duration: 0.5 }}
       >
         <Heading mb="6" textAlign="center" fontSize={{ base: '2xl', md: '3xl' }}>
-          Why Choose FactGuard?
+          Why Choose Political Horizon?
         </Heading>
         <Grid templateColumns={{ base: 'repeat(2, 1fr)', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }} gap={8}>
           {[
           {
-              icon: FaShieldAlt,
-              title: 'AI-Powered Security',
-              text: 'Secure, accurate fact-checking using ML algorithms.',
+              icon: FaBalanceScale,
+              title: 'Balanced Recommendations',
+              text: 'Delivering a balanced mix of news from various political leanings.',
           },
           {
-              icon: FaSearch,
-              title: 'Real-Time Fact Checking',
-              text: 'Quickly verify the authenticity of content in real time.',
+              icon: FaChartPie,
+              title: 'Diversity Metrics',
+              text: 'Evaluated using Shannon entropy and Gini index to ensure diverse perspectives.',
           },
           {
-              icon: FaRobot,
-              title: 'AI Efficiency',
-              text: 'Let AI handle the heavy lifting to save you time.',
+              icon: FaUsers,
+              title: 'User-Centric Design',
+              text: 'Personalized news experiences tailored to your interests with enhanced diversity.',
+          },
+          {
+              icon: FaRegLightbulb,
+              title: 'Innovative Techniques',
+              text: 'Combines hybrid methods to mitigate biases effectively.',
+          },
+          {
+              icon: FaSyncAlt,
+              title: 'Continuous Improvement',
+              text: 'Regular assessment and refinement to adapt to evolving user needs.',
           },
           {
               icon: FaGlobe,
-              title: 'Global Coverage',
-              text: 'Access a global network of fact-checking partners.',
-          },
-          {
-              icon: FaBookOpen,
-              title: 'Educational Resources',
-              text: 'Learn tools and techniques to identify misinformation.',
-          },
-          {
-              icon: FaBolt,
-              title: 'Instant Results',
-              text: 'Fast, actionable insights for media professionals.',
+              title: 'Broad Perspectives',
+              text: 'Ensures exposure to a wide array of political viewpoints globally.',
           },
           ].map((feature, index) => (
             <GridItem key={index}>
@@ -296,8 +297,8 @@ const Home = () => {
         exit={{ opacity: 0, y: -50 }}
         transition={{ duration: 0.5 }}
       >
-        <Heading mb="3" textAlign="center" fontSize={{ base: '2xl', md: '3xl' }}>
-              Benefits of Using FactGuard
+        <Heading mb="6" textAlign="center" fontSize={{ base: '2xl', md: '3xl' }}>
+              Benefits of Using Political Horizon
         </Heading>
         <HStack
             align="center"
@@ -307,7 +308,7 @@ const Home = () => {
           >
             <Image
               src={benefitsImage}
-              alt="FactGuard benefits illustration"
+              alt="Political Horizon Benefits Illustration"
               w={{ base: '67%', sm: '47%' ,md: '42%', lg: '37%', xl: '27%' }}
               mx={{ base: 'auto', md: '0' }}
               flexShrink={0}
@@ -330,15 +331,16 @@ const Home = () => {
                     >
                       <HStack justify="start">
                         <Box fontSize={{ base: 'md', md: 'lg' }} color={primaryColor}>
-                          <FaCheckCircle />
+                          <FaHandshake />
                         </Box>
-                        <Heading size="md">Enhanced Content Trust</Heading>
+                        <Heading size="md">Reduced Polarization</Heading>
                       </HStack>
                       <Text fontSize={{ base: 'sm', md: 'md' }}>
                         {useBreakpointValue({
-                          base: "Build trust in your brand by ensuring the authenticity of your content.",
-                          lg: "Build trust in your brand by ensuring the authenticity of your content. With FactGuard's tools, you can confidently share verified information with your audience.",
+                          base: "Decrease polarization by exposing users to diverse political views consistently.",
+                          lg: "Decrease polarization by exposing users to diverse political views consistently. Political Horizon's hybrid system ensures balanced news exposure, helping users break free from ideological echo chambers.",
                         })}
+
                       </Text>
                     </Box>
                   </motion.div>
@@ -360,15 +362,16 @@ const Home = () => {
                     >
                       <HStack justify="start">
                         <Box fontSize={{ base: 'md', md: 'lg' }} color={primaryColor}>
-                          <FaTasks />
+                          <FaRegNewspaper />
                         </Box>
-                        <Heading size="md">Comprehensive Fact-Checking</Heading>
+                        <Heading size="md">Balanced Information</Heading>
                       </HStack>
                       <Text fontSize={{ base: 'sm', md: 'md' }}>
                         {useBreakpointValue({
-                          base: "Build trust in your brand by ensuring the authenticity of your content.",
-                          lg: "Utilize advanced tools to verify claims and enhance credibility. FactGuard provides accurate results to support your decisions and messaging.",
+                          base: "Access balanced news, fostering a well-rounded understanding of key issues.",
+                          lg: "Access balanced news, fostering a well-rounded understanding of key issues. Our Controlled Exposure Strategy carefully integrates diverse political content, promoting informed decision-making.",
                         })}
+
                       </Text>
                     </Box>
                   </motion.div>
@@ -395,8 +398,8 @@ const Home = () => {
                       </HStack>
                       <Text fontSize={{ base: 'sm', md: 'md' }}>
                         {useBreakpointValue({
-                          base: "Save time and resources with automated fake news detection processes.",
-                          lg: "Save time and resources with automated fake news detection processes. Let our intelligent systems streamline your fact-checking efforts.",
+                          base: "Leverage AI to personalize news and efficiently diversify your feed.",
+                          lg: "Leverage AI to personalize news and efficiently diversify your feed. Our hybrid recommender streamlines the process, delivering personalized yet diverse content seamlessly.",
                         })}
                       </Text>
                     </Box>
@@ -421,9 +424,9 @@ const Home = () => {
           borderRadius="md"
           textAlign="center"
         >
-          <Heading mb="4" fontSize={{ base: '2xl', md: '3xl' }}>Be Part of the Solution</Heading>
+          <Heading mb="4" fontSize={{ base: '2xl', md: '3xl' }}>Be Part of the Change</Heading>
           <Text fontSize={{ base: 'sm', md: 'md' }} mb="3">
-            Empower yourself and your community by promoting factual, unbiased content.
+            Join us in fostering balanced news environments and enriching public debate.
           </Text>
           <Link to="/about">
             <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
