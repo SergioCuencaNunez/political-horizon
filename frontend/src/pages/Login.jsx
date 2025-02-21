@@ -33,7 +33,7 @@ const primaryActiveDark = '#e14f64';
 const Login = () => {
   const navigate = useNavigate(); 
   // For development only
-  const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:5001`;
+  const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:5002`;
 
   // For production
   // const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;

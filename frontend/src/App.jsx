@@ -16,7 +16,7 @@ import theme from './theme';
 import About from './pages/About';
 import SignUp from './pages/SignUp';
 import Login from './pages/Login';
-//import Profile from "./pages/Profile";
+import Profile from "./pages/Profile";
 //import Detect from './pages/Detect';
 //import Verify from './pages/Verify';
 
@@ -187,7 +187,6 @@ function App() {
               </AuthLayout>
             }
           />
-
           {/* Default Layout (For Main Pages) */}
           <Route
             path="/"
@@ -202,6 +201,8 @@ function App() {
             path="*"
             element={<NotFoundLayout><NotFound /></NotFoundLayout>}
           />
+          {/* Profile Route */}
+          <Route path="/profile/*" element={<Profile />} />
         </Routes>
       </Router>
     </ChakraProvider>
