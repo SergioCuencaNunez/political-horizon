@@ -82,7 +82,7 @@ const Home = () => {
           w="100%"
           flexWrap={{ base: 'wrap', md: 'nowrap' }}
         >
-          <Box w={{ base: '100%', md: '55%' }} textAlign={{ base: 'center', md: 'left' }}>
+          <Box w={{ base: '100%', md: '60%' }} textAlign={{ base: 'center', md: 'left' }}>
             <Heading mb="4" fontSize={{ base: '3xl', md: '4xl' }}>
               Breaking Bias, Building Balance
             </Heading>
@@ -96,7 +96,7 @@ const Home = () => {
           <Image
             src={discoverImage}
             alt="Politician Illustration"
-            w={{ base: '66%', sm: '46%' ,md: '41%', lg: '36%', xl: '26%' }}
+            w={{ base: '60%', sm: '55%' ,md: '40%', lg: '35%', xl: '26%' }}
             mx={{ base: 'auto', md: '0' }}
           />
         </HStack>

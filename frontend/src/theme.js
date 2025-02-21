@@ -19,6 +19,37 @@ const theme = extendTheme({
     heading: 'Plus Jakarta Sans, serif',
     body: 'Plus Jakarta Sans, serif',
   },
+  components: {
+    Heading: {
+      baseStyle: {
+        fontWeight: 700,
+      },
+    },
+    Button: {
+      baseStyle: {
+        fontWeight: 500,
+      },
+    },
+    Menu: {
+      baseStyle: {
+        list: {
+          fontWeight: 500,
+        },
+      },
+    },
+    Tabs: {
+      baseStyle: {
+        tab: {
+          fontWeight: 500,
+        },
+      },
+    },
+    Link: {
+      baseStyle: {
+        fontWeight: 500,
+      },
+    },
+  },
   breakpoints: {
     sm: '30em',  // 480px
     md: '48em',  // 768px
