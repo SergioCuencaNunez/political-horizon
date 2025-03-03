@@ -166,4 +166,5 @@ cython_debug/
 
 # Git LFS local files for the moment
 backend/data/*
+backend/models/*
 backend/preprocessing_artifacts/*
