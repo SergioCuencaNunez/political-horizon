@@ -125,7 +125,7 @@ const verifyToken = (req, res, next) => {
 };
 
 // Update User Info Endpoint
-app.post("/account-update", verifyToken, (req, res) => {
+app.post("/account-update", verifyToken, (req, res) => {g
   const { name, email, politicalLeaning } = req.body;
   
   if (!name || !email || !politicalLeaning) {
@@ -201,26 +201,145 @@ app.get("/profile", verifyToken, (req, res) => {
   });
 });
 
-// Get all detections for a user
-app.get("/detections", verifyToken, (req, res) => {
+// Check user status for recommendations (new or returning)
+app.get("/user/status", verifyToken, (req, res) => {
   const query = `
-  SELECT * 
-  FROM detections 
-  WHERE user_id = ? 
-  ORDER BY date DESC
-`;
+    SELECT COUNT(*) AS count FROM user_recommendations WHERE user_id = ?;
+  `;
+
+  db.get(query, [req.user.id], (err, row) => {
+    if (err) return res.status(500).json({ error: "Failed to check user status" });
+
+    if (row.count === 0) {
+      res.json({ status: "new" });
+    } else {
+      res.json({ status: "returning" });
+    }
+  });
+});
+
+// Store user interactions with articles
+app.post("/user/interactions", verifyToken, (req, res) => {
+  const { news_id, interaction_type, read_time_seconds } = req.body;
+
+  if (!news_id || !interaction_type) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  const query = `
+    INSERT INTO user_interactions (user_id, news_id, interaction_type, read_time_seconds) 
+    VALUES (?, ?, ?, ?)
+  `;
+
+  db.run(query, [req.user.id, news_id, interaction_type, read_time_seconds || 0], function (err) {
+    if (err) return res.status(500).json({ error: "Failed to store interaction" });
+    res.json({ success: true, message: "Interaction stored", interaction_id: this.lastID });
+  });
+});
+
+// Check if user should update recommendations
+app.get("/user/should-update-recommendations", verifyToken, (req, res) => {
+  const query = `
+    SELECT COUNT(*) AS count 
+    FROM user_interactions 
+    WHERE user_id = ? AND interaction_timestamp >= datetime('now', '-24 hours');
+  `;
+
+  db.get(query, [req.user.id], (err, row) => {
+    if (err) return res.status(500).json({ error: "Failed to check interaction count" });
+
+    if (row.count >= 5) {
+      res.json({ shouldUpdate: true });  // Generate new recommendations
+    } else {
+      res.json({ shouldUpdate: false }); // Keep showing stored recommendations
+    }
+  });
+});
+
+// Reset interactions after fetching new recommendations
+app.post("/user/reset-interactions", verifyToken, (req, res) => {
+  const query = `
+    DELETE FROM user_interactions 
+    WHERE user_id = ? AND interaction_timestamp >= datetime('now', '-24 hours');
+  `;
+
+  db.run(query, [req.user.id], function (err) {
+    if (err) return res.status(500).json({ error: "Failed to reset interactions" });
+    res.json({ success: true, message: "Interactions reset after fetching new recommendations" });
+  });
+});
+
+// Fetch 10 random articles if the user is new
+app.get("/articles/random", verifyToken, (req, res) => {
+  const userQuery = `SELECT political_leaning FROM users WHERE id = ?`;
+
+  db.get(userQuery, [req.user.id], (err, userRow) => {
+    if (err || !userRow) return res.status(500).json({ error: "Failed to retrieve user leaning" });
+
+    const userLeaning = userRow.political_leaning.toUpperCase();
+
+    // Define opposite leanings
+    let oppositeLeanings = [];
+    if (userLeaning === "LEFT") oppositeLeanings = ["CENTER", "RIGHT"];
+    if (userLeaning === "RIGHT") oppositeLeanings = ["CENTER", "LEFT"];
+    if (userLeaning === "CENTER") oppositeLeanings = ["LEFT", "RIGHT"];
+
+    // Query to get 6 articles from user's leaning
+    const queryMain = `
+      SELECT * FROM news_articles 
+      WHERE political_leaning = ?
+      ORDER BY RANDOM()
+      LIMIT 6;
+    `;
+
+    // Query to get 2 articles from each opposite leaning
+    const queryOpposite1 = `
+      SELECT * FROM news_articles 
+      WHERE political_leaning = ?
+      ORDER BY RANDOM()
+      LIMIT 2;
+    `;
+
+    const queryOpposite2 = `
+      SELECT * FROM news_articles 
+      WHERE political_leaning = ?
+      ORDER BY RANDOM()
+      LIMIT 2;
+    `;
+
+    db.all(queryMain, [userLeaning], (err1, mainArticles) => {
+      if (err1) return res.status(500).json({ error: "Failed to fetch main articles" });
+
+      db.all(queryOpposite1, [oppositeLeanings[0]], (err2, opp1Articles) => {
+        if (err2) return res.status(500).json({ error: "Failed to fetch opposite articles" });
+
+        db.all(queryOpposite2, [oppositeLeanings[1]], (err3, opp2Articles) => {
+          if (err3) return res.status(500).json({ error: "Failed to fetch opposite articles" });
+
+          // Combine all articles into one response
+          const finalArticles = [...mainArticles, ...opp1Articles, ...opp2Articles];
+
+          // Shuffle to avoid strict ordering
+          finalArticles.sort(() => Math.random() - 0.5);
+
+          res.json(finalArticles);
+        });
+      });
+    });
+  });
+});
+
+// Fetch stored recommendations for returning users
+app.get("/articles/recommended", verifyToken, (req, res) => {
+  const query = `
+    SELECT * FROM user_recommendations 
+    WHERE user_id = ? 
+    ORDER BY date_publish DESC;
+  `;
 
   db.all(query, [req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: "Failed to fetch detections" });
-    const parsedRows = rows.map((row) => ({
-      ...row,
-      models: JSON.parse(row.models),
-      true_probabilities: JSON.parse(row.true_probabilities),
-      fake_probabilities: JSON.parse(row.fake_probabilities),
-      predictions: JSON.parse(row.predictions),
-    }));
-
-    res.json(parsedRows);
+    if (err) return res.status(500).json({ error: "Failed to fetch recommendations" });
+    res.json(rows);
   });
 });
 

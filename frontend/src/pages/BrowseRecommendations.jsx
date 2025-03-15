@@ -1,22 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   HStack,
   Box,
   Flex,
   Heading,
   Text,
-  Input,
-  Textarea,
   Button,
+  Input,
+  Select,
+  Badge,
+  Grid,
   IconButton,
   useColorMode,
   useColorModeValue,
   useBreakpointValue,
-  Select,
-  Slider,
-  SliderTrack,
-  SliderFilledTrack,
-  SliderThumb,
   Collapse,
   Modal,
   ModalOverlay,
@@ -28,9 +25,11 @@ import {
   Spinner,
   useDisclosure,
 } from "@chakra-ui/react";
-import { SunIcon, MoonIcon, InfoOutlineIcon } from "@chakra-ui/icons";
+import { SunIcon, MoonIcon, InfoOutlineIcon, ExternalLinkIcon, RepeatIcon, SmallAddIcon } from "@chakra-ui/icons";
+import { FaThumbsUp, FaThumbsDown } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { debounce } from "lodash";
 
 const primaryColorLight = '#c6001e';
 const primaryColorDark = '#cf2640';
@@ -42,7 +41,7 @@ const primaryActiveDark = '#e14f64';
 import logoExploreBright from "../assets/logo-explore-bright.png";
 import logoExploreDark from "../assets/logo-explore-dark.png";
 
-const BrowseRecommendations = ({ addDetection }) => {
+const BrowseRecommendations = () => {
   const navigate = useNavigate();
   // For development only
   const BACKEND_URL_DB = `${window.location.protocol}//${window.location.hostname}:5001`;
@@ -59,11 +58,28 @@ const BrowseRecommendations = ({ addDetection }) => {
   
   const hoverColor = useColorModeValue(primaryHoverLight, primaryHoverDark);
   const activeColor = useColorModeValue(primaryActiveLight, primaryActiveDark);
-  const { colorMode, toggleColorMode } = useColorMode();
+  const textColor = useColorModeValue("black", "white");
+  const refreshBg = useColorModeValue("gray.100", "gray.600");
+  const refreshHoverBg = useColorModeValue("gray.200", "gray.500");
+  const refreshActiveBg = useColorModeValue("gray.300", "gray.400");
 
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [confidence, setConfidence] = useState(70);
+  const { colorMode, toggleColorMode } = useColorMode();
+  const modelCardBg = useColorModeValue("gray.50", "gray.800");
+
+  const hasFetched = useRef(false);
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [thresholdMet, setThresholdMet] = useState(false);
+  const [interactionsCount, setInteractionsCount] = useState(0);
+
+  const [userStatus, setUserStatus] = useState(null);
+
+  const [hasLoaded, setHasLoaded] = useState(false); // Track initial load
+  const [filters, setFilters] = useState({search: "", politicalLeaning: "All", sortBy: "newest",});
+  const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
+  const [animationKey, setAnimationKey] = useState(0);
+  
   const [showTransparency, setShowTransparency] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const { isOpen: isSpinnerOpen, onOpen: onSpinnerOpen, onClose: onSpinnerClose } = useDisclosure();
@@ -72,93 +88,209 @@ const BrowseRecommendations = ({ addDetection }) => {
 
   const toggleTransparency = () => setShowTransparency(!showTransparency);
 
-  const handleAnalyze = () => {
-    if (!title || !content) {
-      onAlertOpen();
-      return;
+  useEffect(() => {
+    if (!hasFetched.current) {
+      hasFetched.current = true;
+      checkUserStatus();
     }
-  
-    onSpinnerOpen();
+  }, []);
 
-    setTimeout(async () => {
-      try {
-        const token = localStorage.getItem("token");
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const startTime = localStorage.getItem("read_start_time");
+        const newsId = localStorage.getItem("read_news_id");
 
-        // Call the API to perform the prediction
-        const response = await fetch(`${BACKEND_URL_API}/predict`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ news_text: content, confidence_threshold: confidence }),
-        });
-    
-        if (!response.ok) {
-          const errorText = await response.text();
-          setErrorMessage(`Detection failed: ${errorText}`);
-          onErrorOpen();
+        if (startTime && newsId) {
+          const elapsedTime = Math.floor((Date.now() - parseInt(startTime)) / 1000);
+
+          // Send read time to backend
+          handleInteraction(newsId, "read", elapsedTime);
+
+          // Clear stored values
+          localStorage.removeItem("read_start_time");
+          localStorage.removeItem("read_news_id");
         }
-    
-        const predictionResult = await response.json();
-    
-        if (predictionResult.success) {
-          // Extract detection details
-          const models = predictionResult.detections.slice(0, 5).map((item) => item.Model);
-          const trueProbabilities = predictionResult.detections.slice(0, 5).map((item) => item["True Probability"]);
-          const fakeProbabilities = predictionResult.detections.slice(0, 5).map((item) => item["Fake Probability"]);
-          const predictions = predictionResult.detections.slice(0, 5).map((item) => item.Prediction);
-    
-          const detectionData = {
-            title: title,
-            content: content,
-            models: models,
-            confidence: confidence,
-            true_probabilities: trueProbabilities,
-            fake_probabilities: fakeProbabilities,
-            predictions: predictions,
-            final_prediction: predictionResult.final_prediction,
-            date: new Date().toISOString(),
-          };
-    
-          // Save the detection data to the database
-          const dbResponse = await fetch(`${BACKEND_URL_DB}/detections`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(detectionData),
-          });
-    
-          if (dbResponse.ok) {
-            const newDetection = await dbResponse.json();
-            addDetection(newDetection); // Add detection to parent state
-            navigate(`/profile/detection-results/${newDetection.id}`, { state: { detection: newDetection } });
-          } else if (dbResponse.status === 409) {
-            console.warn("Duplicate detection.");
-            setErrorMessage("This detection already exists. Please check your list of detections.");
-            onErrorOpen();
-          } else {
-            console.error("Failed to save detection:", await dbResponse.text());
-            setErrorMessage(`Failed to save detection: ${await dbResponse.text()}`);
-            onErrorOpen();
-          }
-        } else {
-          // Display error message if no detections are found
-          setErrorMessage(predictionResult.message || "No detections found for the input.");
-          onErrorOpen();
-        }
-      } catch (error) {
-        console.error("Error during detection analysis:", error);
-        setErrorMessage(`Error during detection analysis: ${error.message}`);
-        onErrorOpen();
-      } finally {
-        onSpinnerClose();
       }
-    }, 5000);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  const debounceSearch = useRef(
+    debounce((value) => {
+      setDebouncedSearch(value);
+      if (hasLoaded) { // Only trigger animations after initial load
+        setAnimationKey((prev) => prev + 1);
+      }
+    }, 500) // 500ms delay
+  ).current;
+    
+  useEffect(() => {
+    debounceSearch(filters.search);
+  }, [filters.search]);
+
+  useEffect(() => {
+    setAnimationKey((prev) => prev + 1);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    if (!hasLoaded) {
+      setHasLoaded(true); // Mark initial load complete
+    }
+  }, []);
+  
+  const triggerAnimationIfNeeded = (newCount) => {
+    if (newCount !== prevFilteredCount.current) {
+      setAnimationKey((prev) => prev + 1);
+      prevFilteredCount.current = newCount;
+    }
+  };
+  
+  const updateFilters = (newFilters) => {
+    setFilters((prev) => ({ ...prev, ...newFilters }));
+  
+    // Ensure animation happens on any filter change
+    if (!("search" in newFilters)) {
+      setAnimationKey((prev) => prev + 1);
+    }
+  };
+      
+  const filteredArticles = articles
+  .filter(article => {
+    if (debouncedSearch.trim() !== "") {
+      const searchLower = debouncedSearch.toLowerCase();
+      if (!article.headline.toLowerCase().includes(searchLower) &&
+          !article.outlet.toLowerCase().includes(searchLower)) {
+        return false;
+      }
+    }
+    if (filters.politicalLeaning !== "All" && article.political_leaning !== filters.politicalLeaning.toUpperCase()) {
+      return false;
+    }
+    return true;
+  })
+  .sort((a, b) => {
+    switch (filters.sortBy) {
+      case "newest": return new Date(b.date_publish) - new Date(a.date_publish);
+      case "oldest": return new Date(a.date_publish) - new Date(b.date_publish);
+      case "title-asc": return a.headline.localeCompare(b.headline);
+      case "title-desc": return b.headline.localeCompare(a.headline);
+      case "outlet-asc": return a.outlet.localeCompare(b.outlet);
+      case "outlet-desc": return b.outlet.localeCompare(a.outlet);
+      default: return 0;
+    }
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      triggerAnimationIfNeeded(filteredArticles.length);
+    }, 200); // 200ms delay
+  
+    return () => clearTimeout(timer);
+  }, [filteredArticles]);
+        
+  const checkUserStatus = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL_DB}/user/status`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await response.json();
+      setUserStatus(data.status);
+      console.log(data);
+      if (data.status === "new") {
+        fetchRandomArticles();
+      } else {
+        fetchRecommendations();
+      }
+    } catch (error) {
+      console.error("Error checking user status:", error);
+    }
   };
 
+  const fetchRandomArticles = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL_DB}/articles/random`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await response.json();
+      setArticles(data);
+    } catch (error) {
+      console.error("Error fetching random articles:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRecommendations = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL_DB}/articles/recommended?page=${page}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await response.json();
+      setArticles((prev) => [...prev, ...data]);
+    } catch (error) {
+      console.error("Error fetching recommendations:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInteraction = async (news_id, interaction_type, read_time_seconds = 0) => {
+    try {
+      await fetch(`${BACKEND_URL_DB}/user/interactions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ news_id, interaction_type, read_time_seconds }),
+      });
+      checkThreshold();
+    } catch (error) {
+      console.error("Error storing interaction:", error);
+    }
+  };
+
+  const handleReadMore = (news_id, url) => {
+    localStorage.setItem("read_start_time", Date.now());
+    localStorage.setItem("read_news_id", news_id);
+    window.open(url, "_blank");
+  };
+
+  const checkThreshold = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL_DB}/user/should-update-recommendations`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await response.json();
+      setThresholdMet(data.shouldUpdate);
+    } catch (error) {
+      console.error("Error checking threshold:", error);
+    }
+  };
+
+  const generateRecommendations = async () => {
+    onSpinnerOpen();
+    try {
+      await fetch(`${BACKEND_URL_DB}/user/generate-recommendations`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      setArticles([]);
+      fetchRecommendations();
+    } catch (error) {
+      console.error("Error generating recommendations:", error);
+    } finally {
+      onSpinnerClose();
+    }
+  };
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
@@ -212,93 +344,108 @@ const BrowseRecommendations = ({ addDetection }) => {
             </HStack>
           </Flex>
           <Box borderBottom="1px" borderColor="gray.300" mb="4"></Box>
-          <Text mb="4">Enter the title and paste/upload a news article to analyze its authenticity:</Text>
-          <Input
-            placeholder="Enter article title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            mb="4"
-            _placeholder={{
-              color: useColorModeValue("gray.500", "gray.400"),
-            }}
-          />
-          <Textarea
-            placeholder="Paste your article content here"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            mb="4"
-            _placeholder={{
-              color: useColorModeValue("gray.500", "gray.400"),
-            }}
-          />
+          <Text mb="4" textAlign="justify">Your recommendations are personalized based on your reading history while ensuring a diverse and balanced perspective, helping you explore different viewpoints and stay informed with a well-rounded news feed.</Text>
+          {userStatus === "new" && <Text mb="4" fontSize="sm" color="gray.500">These are your first 10 articles to help us tune your interests.</Text>}
+          <Flex gap="4" mb="5">
+            <Input placeholder="Search news..." value={filters.search} onChange={(e) => updateFilters({ search: e.target.value })} />
+            <Select value={filters.politicalLeaning} onChange={(e) => updateFilters({ politicalLeaning: e.target.value })}>
+              <option value="All">All</option>
+              <option value="Right">Right</option>
+              <option value="Center">Center</option>
+              <option value="Left">Left</option>
+            </Select>
+            <Select value={filters.sortBy} onChange={(e) => updateFilters({ sortBy: e.target.value })}>
+              <option value="newest">Date (Newest First)</option>
+              <option value="oldest">Date (Oldest First)</option>
+              <option value="title-asc">Title (A-Z)</option>
+              <option value="title-desc">Title (Z-A)</option>
+              <option value="outlet-asc">Outlet (A-Z)</option>
+              <option value="outlet-desc">Outlet (Z-A)</option>
+            </Select>
+          </Flex>
           
-          {/* Confidence Threshold */}
-          <Flex direction="column">
-            <Flex align="center" justify="space-between" mb="4">
-              <Text mr="4">Confidence Threshold:</Text>
-              {useBreakpointValue({
-                base: (
-                  <Select
-                    value={confidence}
-                    onChange={(e) => setConfidence(parseInt(e.target.value))}
-                    width="50%"
-                    maxWidth="150px"
-                  >
-                    {[...Array(11).keys()].map((val) => (
-                      <option key={val} value={50 + val * 5}>
-                        {50 + val * 5}%
-                      </option>
-                    ))}
-                  </Select>
-                ),
-                lg: (
-                  <Flex flex="1" align="center">
-                    <Slider
-                      defaultValue={confidence}
-                      min={50}
-                      max={100}
-                      step={5}
-                      onChange={(val) => setConfidence(val)}
-                      width="100%"
-                    >
-                      <SliderTrack bg="gray.200">
-                        <SliderFilledTrack bg={primaryColor} />
-                      </SliderTrack>
-                      <SliderThumb
-                        boxSize={5}
-                        border="1px"
-                        borderColor={useColorModeValue("gray.200", "gray.400")}
-                      />
-                    </Slider>
-                    <Text ml={4} fontWeight="bold">{confidence}%</Text>
+          <motion.div
+            key={animationKey} // Forces re-mount on filtering & sorting
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <Grid templateColumns={{ base: "repeat(1, 1fr)", md: "repeat(2, 1fr)" }} gap="4" mb="5">
+              {filteredArticles.map((article, index) => (
+                <motion.div
+                  key={article.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ scale: 1.025 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{
+                    opacity: { duration: 0.5, delay: 0.1 * index },
+                    scale: { type: "spring", stiffness: 300, damping: 20 },
+                  }}
+                >
+                  <Flex key={article.id} p="5" borderRadius="md" shadow="md" direction="column" justify="center" height="100%" bg={modelCardBg}>
+                    <Text fontWeight="bold" fontSize="lg" mb="1">{article.headline}</Text>
+                    <Text fontSize="sm" color="gray.500" mb="2">{article.outlet} - {new Date(article.date_publish).toLocaleDateString()}</Text>
+                    <Badge
+                        colorScheme={article.political_leaning === "RIGHT" ? "red" : article.political_leaning === "LEFT" ? "blue" : "yellow"}
+                        width="fit-content"
+                        mb="4"
+                      >
+                        {article.political_leaning}
+                      </Badge>
+                    <HStack spacing="2">
+                      <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                        <IconButton icon={<FaThumbsUp />} onClick={() => handleInteraction(article.id, "like")} ></IconButton>
+                      </motion.div>
+                      <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                        <IconButton icon={<FaThumbsDown />} onClick={() => handleInteraction(article.id, "dislike")} ></IconButton>
+                        </motion.div>
+                      <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                        <Button leftIcon={<ExternalLinkIcon />} onClick={() => handleReadMore(article.id, article.url)}>Read More</Button>
+                      </motion.div>
+                    </HStack>
                   </Flex>
-                ),
-              })}
-            </Flex>
-            <Text fontSize="sm" mb="4" textAlign="justify" color={useColorModeValue("gray.500", "gray.400")}>
-              {useBreakpointValue({
-                base: "Adjust the confidence threshold using the selection box. FactGuard Detect will only classify news as fake or true if the certainty exceeds the selected threshold.",
-                lg: "The confidence slider lets you adjust the threshold that determines the minimum certainty required for classifying news. For instance, if set to 70%, FactGuard Detect will only classify news as fake or true when it is at least 70% confident in its prediction.",
-              })}
-            </Text>
-          </Flex>
-          
-          <Flex justify="center" mb="4">
-            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-              <Button
-                bg={primaryColor}
-                color="white"
-                _hover={{ bg: hoverColor }}
-                _active={{ bg: activeColor }}
-                size="md"
-                width="fit-content"
-                px="8"
-                onClick={handleAnalyze}
-              >
-                Analyze
-              </Button>
-            </motion.div>
-          </Flex>
+                </motion.div>
+              ))}
+            </Grid>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.2, duration: 0.5 }}
+          >
+            <HStack mb="4" justify="center">
+              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                <Button
+                  leftIcon={<RepeatIcon />}
+                  size="md"
+                  bg={refreshBg}
+                  color={textColor}
+                  _hover={{ bg: refreshHoverBg }}
+                  _active={{ bg: refreshActiveBg }}
+                  onClick={fetchRandomArticles}
+                >
+                  Refresh
+                </Button>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                <Button
+                  leftIcon={<SmallAddIcon />}
+                  size="md"
+                  bg={primaryColor}
+                  color="white"
+                  _hover={{ bg: hoverColor }}
+                  _active={{ bg: activeColor }}
+                  isDisabled={interactionsCount < 3}
+                  onClick={fetchRecommendations}
+                >
+                  Get Recommendations
+                </Button>
+              </motion.div>
+            </HStack>
+          </motion.div>
 
           {/* Transparency Section */}
           <Flex direction="column">
@@ -312,20 +459,20 @@ const BrowseRecommendations = ({ addDetection }) => {
               <Box mt={4} p={4} borderRadius="md" bg={useColorModeValue("gray.50", "gray.800")}>
                 <Text fontSize="sm" textAlign="justify">
                   {useBreakpointValue({
-                    base: "FactGuard Detect uses advanced ML and DL models to analyze the authenticity of news. It selects the most accurate model to ensure trustworthy results.",
-                    lg: "FactGuard Detect utilizes advanced Machine Learning (ML) and Deep Learning (DL) models to analyze the authenticity of news articles. By training multiple models on large datasets of verified fake and real news, the system evaluates their performance and selects the most accurate and reliable one based on key metrics like accuracy, precision, and recall.",
+                    base: "Horizon Explore is designed to provide a balanced and personalized news experience. It ensures that you receive customized news without reinforcing ideological bubbles.",
+                    lg: "Horizon Explore is designed to provide a balanced and personalized news experience. Our system combines Content-Based Filtering (CBF) with Bias Mitigation Techniques to ensure that you receive news tailored to your preferences without reinforcing ideological bubbles.",
                   })}
                 </Text>
                 <Text mt={2} fontSize="sm" textAlign="justify">
                   {useBreakpointValue({
-                    base: "Continuous improvements are made to enhance accuracy and transparency.",
-                    lg: "This approach ensures that the best-performing model is used to deliver consistent and trustworthy results. While no prediction system is perfect, FactGuard Detect is continuously improved to enhance accuracy and maintain transparency.",
+                    base: "Our recommendation engine analyzes your reading history and implements strategies to reduce polarization.",
+                    lg: "Our recommendation engine analyzes your reading history and applies Controlled Exposure Strategies and Diversity-Aware Re-Ranking Techniques to reduce polarization and broaden your understanding of current events.",
                   })}
                 </Text>
               </Box>
             </Collapse>
           </Flex>
-      
+
           {/* Spinner Modal */}
           <Modal isOpen={isSpinnerOpen} onClose={onSpinnerClose} closeOnOverlayClick={false} closeOnEsc={false} isCentered>
             <ModalOverlay />
@@ -334,7 +481,7 @@ const BrowseRecommendations = ({ addDetection }) => {
               >
               <ModalBody textAlign="center" py="6">
                 <Spinner size="xl" />
-                <Text mt="4">Analyzing News with {confidence}% Confidence Threshold... Please Wait.</Text>
+                <Text mt="4">Analyzing News with Confidence Threshold... Please Wait.</Text>
               </ModalBody>
             </ModalContent>
           </Modal>
