@@ -1,7 +1,8 @@
 const bcrypt = require('bcryptjs');
 
-const passwordAdmin = "Admin123"; // Replace with the password you want for the admin account
-const passwordUser = "User123"; // Replace with the password you want for the admin account
+const passwordUserRight = "Richard123";
+const passwordUserCenter = "Charlotte123";
+const passwordUserLeft = "Lewis123";
 
-const hashedPassword = bcrypt.hashSync(passwordUser, 10);
+const hashedPassword = bcrypt.hashSync(passwordUserLeft, 10);
 console.log("Hashed Password:", hashedPassword);
