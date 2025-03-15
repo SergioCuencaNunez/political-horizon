@@ -164,7 +164,7 @@ cython_debug/
 # macOS DS Store files
 .DS_Store
 
-# Git LFS local files for the moment
+# Git LFS local files for the moment2
 backend/data/*
 backend/models/*
 backend/preprocessing_artifacts/*
