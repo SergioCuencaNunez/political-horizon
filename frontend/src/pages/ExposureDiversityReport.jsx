@@ -36,20 +36,20 @@ const primaryHoverDark = '#d83a52';
 const primaryActiveLight = '#970016';
 const primaryActiveDark = '#e14f64';
 
-import logoVerifyBright from "../assets/logo-bright.png";
-import logoVerifyDark from "../assets/logo-dark.png";
+import logoBalanceBright from "../assets/logo-balance-bright.png";
+import logoBalanceDark from "../assets/logo-balance-dark.png";
 
-const StartNewClaimCheck = ({ addClaimCheck }) => {
+const ExposureDiversityReport = ({ addClaimCheck }) => {
   const navigate = useNavigate();
   // For development only
-  const BACKEND_URL_DB = `${window.location.protocol}//${window.location.hostname}:5002`;
+  const BACKEND_URL_DB = `${window.location.protocol}//${window.location.hostname}:5001`;
   const BACKEND_URL_API = `${window.location.protocol}//${window.location.hostname}:5002`;
 
   // For production
   // const BACKEND_URL_DB = import.meta.env.VITE_BACKEND_URL_DB;
   // const BACKEND_URL_API = import.meta.env.VITE_BACKEND_URL_API;
   
-  const logo = useColorModeValue(logoVerifyBright, logoVerifyDark);
+  const logo = useColorModeValue(logoBalanceBright, logoBalanceDark);
   const logoHeight = useBreakpointValue({ base: '28px', md: '33px' });
 
   const primaryColor = useColorModeValue(primaryColorLight, primaryColorDark);
@@ -402,4 +402,4 @@ const StartNewClaimCheck = ({ addClaimCheck }) => {
   );
 };
 
-export default StartNewClaimCheck;
+export default ExposureDiversityReport;

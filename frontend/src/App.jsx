@@ -41,7 +41,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
         flexDirection="column"
         justifyContent="center"
         bgGradient={gradient} // Apply gradient background
-        px={{ md: '100' }}
+        px={{ md: '50', lg: '100' }}
         py="10"
         maxW="50%"
         color="white"
@@ -115,6 +115,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
             alignItems="center"
             px="8"
             py="10"
+            maxW={{md: "50%"}}
           >
             {children}  
       </Box>

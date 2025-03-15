@@ -35,13 +35,13 @@ import { motion, AnimatePresence } from "framer-motion";
 const primaryColorLight = '#c6001e';
 const primaryColorDark = '#cf2640';
 
-import logoDetectBright from "../assets/logo-bright.png";
-import logoDetectDark from "../assets/logo-dark.png";
+import logoExploreBright from "../assets/logo-explore-bright.png";
+import logoExploreDark from "../assets/logo-explore-dark.png";
 
-const MyNewsDetections = ({ detections, deleteDetection }) => {
+const MyInteractions = ({ detections, deleteDetection }) => {
   const navigate = useNavigate();
 
-  const logo = useColorModeValue(logoDetectBright, logoDetectDark);
+  const logo = useColorModeValue(logoExploreBright, logoExploreDark);
   const logoHeight = useBreakpointValue({ base: '28px', md: '33px' });
 
   const primaryColor = useColorModeValue(primaryColorLight, primaryColorDark);
@@ -352,4 +352,4 @@ const MyNewsDetections = ({ detections, deleteDetection }) => {
   );
 };
 
-export default MyNewsDetections;
+export default MyInteractions;
