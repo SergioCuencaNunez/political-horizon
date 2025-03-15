@@ -44,7 +44,7 @@ const ClaimCheckResults = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const BACKEND_URL_DB = `${window.location.protocol}//${window.location.hostname}:5002`;
+  const BACKEND_URL_DB = `${window.location.protocol}//${window.location.hostname}:5001`;
 
   const logo = useColorModeValue(logoVerifyBright, logoVerifyDark);
   const logoHeight = useBreakpointValue({ base: '28px', md: '33px' });

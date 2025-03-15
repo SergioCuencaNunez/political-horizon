@@ -34,10 +34,13 @@ import {
   FaNewspaper,
   FaShieldAlt,
   FaSignOutAlt,
-  FaPlus,
+  FaCompass,
+  FaEye,
+  FaHeart,
   FaChartBar,
+  FaBalanceScale,
   FaCogs,
-  FaTasks,
+  FaGlobe,
   FaUsers,
   FaTrashAlt,
 } from "react-icons/fa";
@@ -47,11 +50,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import logoBright from '../assets/logo-bright.png';
 import logoDark from '../assets/logo-dark.png';
 
-import StartNewDetection from "./StartNewDetection";
-import MyNewsDetections from "./MyNewsDetections";
+import BrowseRecommendations from "./BrowseRecommendations";
+import MyInteractions from "./MyInteractions";
 import DetectionResults from "./DetectionResults";
-import StartNewClaimCheck from "./StartNewClaimCheck";
-import MyClaimChecks from "./MyClaimChecks";
+import ExposureDiversityReport from "./ExposureDiversityReport";
+import TopSourcesOutlets from "./TopSourcesOutlets";
 import ClaimCheckResults from "./ClaimCheckResults";
 import AccountDetails from "./AccountDetails";
 import NotFound from "../pages/NotFound"; 
@@ -74,7 +77,7 @@ const gradient = "linear-gradient(to bottom, #b0001a, #c6001e, #e14f64)";
 const Profile = () => {
   const navigate = useNavigate();
   // For development only
-  const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:5002`;
+  const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:5001`;
 
   // For production
   // const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
@@ -472,7 +475,7 @@ const Profile = () => {
           <HStack justifyContent={{ base: "center", md: "flex-start" }} w="100%">
             <motion.img
               src={logo}
-              alt="FactGuard Logo"
+              alt="Political Horizon Logo"
               style={{ height: logoHeight, width: 'auto'}}
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
@@ -491,7 +494,7 @@ const Profile = () => {
             w="100%"
           >
             <HStack>
-              <Avatar name={user.username} size="lg" bg={avatarBgColor} />
+              <Avatar name={user.username} size="lg" bg={avatarBgColor} color="white"/>
               <Box>
                 <Text fontWeight="bold" isTruncated>{user.username}</Text>
                 <Text fontSize="sm" color={textColorAvatar} isTruncated>
@@ -511,7 +514,7 @@ const Profile = () => {
 
           {/* User Info (Desktop only) */}
           <HStack display={{ base: "none", md: "flex" }}>
-            <Avatar name={user.username} size="lg" bg={avatarBgColor} />
+            <Avatar name={user.username} size="lg" bg={avatarBgColor} color="white" />
             <Box>
               <Text fontWeight="bold" isTruncated>{user.username}</Text>
               <Text fontSize="sm" color={textColorAvatar} isTruncated>
@@ -542,7 +545,7 @@ const Profile = () => {
               </Button>
             </motion.div>
             
-            {/* Detect Fake News Dropdown */}
+            {/* Explore News Dropdown */}
             <Box>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button
@@ -558,7 +561,7 @@ const Profile = () => {
                   <HStack w="100%" justifyContent="space-between">
                     <HStack>
                       <FaNewspaper />
-                      <Text>Detect Fake News</Text>
+                      <Text>Explore News</Text>
                     </HStack>
                     <ChevronDownIcon />
                   </HStack>
@@ -582,11 +585,11 @@ const Profile = () => {
                       _active={{ color: activeColor }}
                       color={textColor}
                       width="100%"
-                      onClick={() => navigate("/profile/start-new-detection")}
+                      onClick={() => navigate("/profile/browse-recommendations")}
                     >
                       <HStack>
-                        <FaPlus />
-                        <Text>Start New Detection</Text>
+                        <FaCompass />
+                        <Text>Browse Recommendations</Text>
                       </HStack>
                     </Button>
                     <Button
@@ -597,11 +600,11 @@ const Profile = () => {
                       _active={{ color: activeColor }}
                       color={textColor}
                       width="100%"
-                      onClick={() => navigate("/profile/my-news-detections")}
+                      onClick={() => navigate("/profile/my-interactions")}
                     >
                       <HStack>
-                        <FaTasks />
-                        <Text>My News Detections</Text>
+                        <FaHeart />
+                        <Text>My Interactions</Text>
                       </HStack>
                     </Button>
                   </VStack>
@@ -610,7 +613,7 @@ const Profile = () => {
               </AnimatePresence>
             </Box>
 
-            {/* Verify Claims Dropdown */}
+            {/* Bias Insights Dropdown */}
             <Box>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button
@@ -625,8 +628,8 @@ const Profile = () => {
                 >
                   <HStack w="100%" justifyContent="space-between">
                     <HStack>
-                      <FaShieldAlt />
-                      <Text>Verify Claims</Text>
+                      <FaEye />
+                      <Text>Bias Insights</Text>
                     </HStack>
                     <ChevronDownIcon />
                   </HStack>
@@ -650,11 +653,11 @@ const Profile = () => {
                       _active={{ color: activeColor }}
                       color={textColor}
                       width="100%"
-                      onClick={() => navigate("/profile/start-new-claim-check")}
+                      onClick={() => navigate("/profile/exposure-diversity-report")}
                     >
                       <HStack>
-                        <FaPlus />
-                        <Text>Start New Claim Check</Text>
+                        <FaBalanceScale />
+                        <Text>Exposure and Diversity Report</Text>
                       </HStack>
                     </Button>
                     <Button
@@ -665,11 +668,11 @@ const Profile = () => {
                       _active={{ color: activeColor }}
                       color={textColor}
                       width="100%"
-                      onClick={() => navigate("/profile/my-claim-checks")}
+                      onClick={() => navigate("/profile/top-source-outlets")}
                     >
                       <HStack>
-                        <FaTasks />
-                        <Text>My Claim Checks</Text>
+                        <FaGlobe />
+                        <Text>Top Sources & Outlets</Text>
                       </HStack>
                     </Button>
                   </VStack>
@@ -800,40 +803,40 @@ const Profile = () => {
                   </Box>
                 </motion.div>
 
-                {/* Features */}
+                {/* Key Features */}
                 <motion.div
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.5 }}
                 >
-                  <Heading size="lg" mb="4">Recent Pages</Heading>
+                  <Heading size="lg" mb="4">Key Features</Heading>
                   <Flex wrap="wrap" justify="space-between" gap="6">
                     {[
                       {
+                        icon: <FaCompass size="50px" color={primaryColor} style={{ margin: "auto" }} />,
+                        title: "Explore News",
+                        text: {
+                          base: "Discover diverse news articles.",
+                          md: "Discover diverse news articles.",
+                          lg: "Discover diverse news articles tailored to your reading preferences while avoiding ideological bubbles.",
+                        },          
+                      },
+                      {
+                        icon: <FaBalanceScale size="50px" color={primaryColor} style={{ margin: "auto" }} />,
+                        title: "Bias Insights",
+                        text: {
+                          base: "Analyze your news consumption bias.",
+                          md: "Analyze your news consumption bias.",
+                          lg: "Analyze and visualize your political news consumption bias and diversity trends over time.",
+                        },          
+                      },
+                      {
                         icon: <FaNewspaper size="50px" color={primaryColor} style={{ margin: "auto" }} />,
-                        title: "Fake News Detection",
+                        title: "Personalized Recommendations",
                         text: {
-                          base: "Detect fake news using our DL model.",
-                          md: "Detect fake news using our DL model.",
-                          lg: "FactGuard Detect makes use of an accurate DL model to detect fake news and identify misleading content.",
-                        },
-                      },
-                      {
-                        icon: <FaShieldAlt size="50px" color={primaryColor} style={{ margin: "auto" }} />,
-                        title: "Claim Check",
-                        text: {
-                          base: "Validate claims with Google FactCheck API.",
-                          md: "Validate claims with Google FactCheck API.",
-                          lg: "FactGuard Verify makes use of the API of Google FactCheck Claim Search to validate claims effectively and efficiently.",
-                        },
-                      },
-                      {
-                        icon: <FaUsers size="50px" color={primaryColor} style={{ margin: "auto" }} />,
-                        title: "Team Management",
-                        text: {
-                          base: "Collaborate in detecting misinformation.",
-                          md: "Invite other people and collaborate in detecting misinformation.",
-                          lg: "Invite other people to use FactGuard and collaborate in detecting and preventing misinformation.",
+                          base: "Receive curated news articles, with controlled exposure.",
+                          md: "Receive curated news articles, with controlled exposure.",
+                          lg: "Receive curated news articles based on your interests, with controlled exposure to diverse viewpoints.",
                         },
                       },
                     ].map((item, index) => (
@@ -894,7 +897,7 @@ const Profile = () => {
                           bg: useColorModeValue("gray.50", "gray.600"),
                         }}                
                       >
-                        <Heading size="md" mb="4">Detections and Claims Over Time</Heading>
+                        <Heading size="md" mb="4">Bias & Diversity Metrics</Heading>
                         <DetectionsAndClaimsLineChart detections={detections} claimChecks={claimChecks} />
                       </Box>
                     </motion.div>
@@ -920,7 +923,7 @@ const Profile = () => {
                           bg: useColorModeValue("gray.50", "gray.600"),
                         }}                
                       >
-                        <Heading size="md" mb="4">Predictions and Ratings Overview</Heading>
+                        <Heading size="md" mb="4">User Engagement Overview</Heading>
                         <RatingsAndPredictionsPieChart detections={detections} claimChecks={claimChecks} />
                       </Box>
                     </motion.div>
@@ -946,7 +949,7 @@ const Profile = () => {
                           bg: useColorModeValue("gray.50", "gray.600"),
                         }}               
                       >
-                        <Heading size="md" mb="4">Usage Statistics</Heading>
+                        <Heading size="md" mb="4">Recommendation Effectiveness</Heading>
                         <UsageStatistics detections={detections} claimChecks={claimChecks} />
                       </Box>
                     </motion.div>
@@ -959,7 +962,7 @@ const Profile = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6, duration: 0.5 }}
                 >
-                  <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Recent Detections</Heading>
+                  <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Recent Recommendations</Heading>
                     <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">
                       {detections.length > 0 ? (
                         <>
@@ -1044,10 +1047,10 @@ const Profile = () => {
                           <Flex align="center" justify="center" direction="column" h="15vh">
                             <WarningIcon boxSize="6" color="gray.500" mb="2" />
                             <Text fontSize="lg" color="gray.500" textAlign="center">
-                              No detections found.
+                              No recommendations found.
                             </Text>
                             <Text fontSize="md" color="gray.400" textAlign="center">
-                              Start detecting fake news with FactGuard Detect by analyzing articles and preventing misinformation today.
+                              Start exploring news articles tailored to your interests with Horizon Explore while ensuring a diverse and balanced perspective in your recommendations.
                             </Text>
                           </Flex>
                         </motion.div>
@@ -1060,7 +1063,7 @@ const Profile = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.8, duration: 0.5 }}
                 >
-                  <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Recent Claim Checks</Heading>
+                  <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Bias Insights History</Heading>
                   <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">
                       {claimChecks.length > 0 ? (
                         <>
@@ -1145,10 +1148,10 @@ const Profile = () => {
                           <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "15vh" }} mb={{ base: "4", md: "0" }}>
                             <WarningIcon boxSize="6" color="gray.500" mb="2" />
                             <Text fontSize="lg" color="gray.500" textAlign="center">
-                              No claims checks found.
+                              No bias history found.
                             </Text>
                             <Text fontSize="md" color="gray.400" textAlign="center">
-                              Start verifying claims with FactGuard Verify by evaluating their reliability using trusted sources and robust fact-checking methods.
+                              Track how your news consumption evolves over time with Horizon Balance and gain insights into the diversity of perspectives in your reading habits.
                             </Text>
                           </Flex>
                         </motion.div>
@@ -1159,13 +1162,13 @@ const Profile = () => {
             }
           />
           <Route
-            path="/start-new-detection"
-            element={<StartNewDetection addDetection={addDetection}/>}
+            path="/browse-recommendations"
+            element={<BrowseRecommendations addDetection={addDetection}/>}
             />
           <Route
-            path="/my-news-detections"
+            path="/my-interactions"
             element={
-              <MyNewsDetections
+              <MyInteractions
                 detections={detections}
                 deleteDetection={deleteDetection}
               />
@@ -1173,13 +1176,13 @@ const Profile = () => {
           />
           <Route path="/detection-results/:id" element={<DetectionResults />} />
           <Route
-            path="/start-new-claim-check"
-            element={<StartNewClaimCheck addClaimCheck={addClaimCheck}/>}
+            path="/exposure-diversity-report"
+            element={<ExposureDiversityReport addClaimCheck={addClaimCheck}/>}
             />
           <Route
-            path="/my-claim-checks"
+            path="/top-source-outlets"
             element={
-              <MyClaimChecks
+              <TopSourcesOutlets
                 claimChecks={claimChecks}
                 deleteClaimCheck={deleteClaimCheck}
               />

@@ -37,7 +37,7 @@ const primaryActiveDark = '#e14f64';
 
 const AccountDetails = () => {
   // For development only
-  const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:5002`;
+  const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:5001`;
 
   // For production
   // const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;

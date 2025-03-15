@@ -8,6 +8,7 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
+  Select,
   Button,
   Text,
   Checkbox,
@@ -36,14 +37,14 @@ const primaryActiveDark = '#e14f64';
 const SignUp = () => {
   const navigate = useNavigate();
   // For development only
-  const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:5002`;
+  const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:5001`;
 
   // For production
   // const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
     
   const [alert, setAlert] = useState(null);
-  const [passwordAlert, setPasswordAlert] = useState(null);
   const [emailAlert, setEmailAlert] = useState(null);
+  const [passwordAlert, setPasswordAlert] = useState(null);
   const [checkboxAlert, setCheckboxAlert] = useState(null);
   const [emailValid, setEmailValid] = useState(true);
   const [passwordValid, setPasswordValid] = useState(true);
@@ -63,8 +64,8 @@ const SignUp = () => {
 
   const resetAlerts = () => {
     setAlert(null);
-    setPasswordAlert(null);
     setEmailAlert(null);
+    setPasswordAlert(null);
     setCheckboxAlert(null);
   };
 
@@ -77,7 +78,7 @@ const SignUp = () => {
 
   useEffect(() => {
     if (passwordAlert) {
-      const timer = setTimeout(() => setPasswordAlert(null), 3000);
+      const timer = setTimeout(() => setPasswordAlert(null), 5000);
       return () => clearTimeout(timer);
     }
   }, [passwordAlert]);
@@ -102,12 +103,13 @@ const SignUp = () => {
       setTimeout(() => setEmailAlert(null), 3000);
       return;
     }
+    
     if (!validatePassword(password, email, username)) {
       setPasswordValid(false);
       setPasswordAlert(
         "Password cannot match your username or email and must include 1 uppercase, 6-20 characters, and no invalid characters."
       );
-      setTimeout(() => setPasswordAlert(null), 3000);
+      setTimeout(() => setPasswordAlert(null), 5000);
       return;
     }
 
@@ -194,6 +196,7 @@ const SignUp = () => {
 
   return (
     <motion.div
+      style={{ width: "100vw", display: "flex", justifyContent: "center", alignItems: "center" }}
       initial={{ opacity: 0, y: 50 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -50 }}
@@ -202,7 +205,7 @@ const SignUp = () => {
       <Box display="flex" alignItems="center" justifyContent="center" flex="1">
         <Box
           maxW="md"
-          w="600px"
+          w="full"
           p="6"
           shadow="md"
           borderWidth="1px"
@@ -212,7 +215,7 @@ const SignUp = () => {
           <Box textAlign="center" mb="6">
             <motion.img
               src={logo}
-              alt="FactGuard Logo"
+              alt="Political Horizon Logo"
               style={{
                 height: logoHeight,
                 width: 'auto',
@@ -330,6 +333,19 @@ const SignUp = () => {
                   />
                 </InputGroup>
               </FormControl>
+              <FormControl id="politicalLeaning" isRequired>
+                <FormLabel>Political Leaning</FormLabel>
+                <InputGroup>
+                  <Select name="politicalLeaning" placeholder="Select your political leaning">
+                    <option value="Left">Left</option>
+                    <option value="Center">Center</option>
+                    <option value="Right">Right</option>
+                  </Select>
+                </InputGroup>
+                <Text fontSize="sm" color="gray.600" mt={2} textAlign="justify">
+                  Please select the most accurate option to ensure a more balanced and personalized experience.
+                </Text>
+            </FormControl>
               <FormControl id="email" isRequired isInvalid={!emailValid}>
                 <FormLabel>Email</FormLabel>
                 <InputGroup>

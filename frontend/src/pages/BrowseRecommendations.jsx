@@ -39,19 +39,19 @@ const primaryHoverDark = '#d83a52';
 const primaryActiveLight = '#970016';
 const primaryActiveDark = '#e14f64';
 
-import logoDetectBright from "../assets/logo-bright.png";
-import logoDetectDark from "../assets/logo-dark.png";
+import logoExploreBright from "../assets/logo-explore-bright.png";
+import logoExploreDark from "../assets/logo-explore-dark.png";
 
-const StartNewDetection = ({ addDetection }) => {
+const BrowseRecommendations = ({ addDetection }) => {
   const navigate = useNavigate();
   // For development only
-  const BACKEND_URL_DB = `${window.location.protocol}//${window.location.hostname}:5002`;
+  const BACKEND_URL_DB = `${window.location.protocol}//${window.location.hostname}:5001`;
   const BACKEND_URL_API = `${window.location.protocol}//${window.location.hostname}:5002`;
 
   // For production
   // const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
   
-  const logo = useColorModeValue(logoDetectBright, logoDetectDark);
+  const logo = useColorModeValue(logoExploreBright, logoExploreDark);
   const logoHeight = useBreakpointValue({ base: '28px', md: '33px' });
   
   const primaryColor = useColorModeValue(primaryColorLight, primaryColorDark);
@@ -169,7 +169,7 @@ const StartNewDetection = ({ addDetection }) => {
       <Box px={{ md: 4 }} py={{ md: 6 }}>
         <Flex direction="column" bg={cardBg} p={8} borderRadius="md" shadow="md">
           <Flex justify="space-between" align="center" mb="4">
-            <Heading fontSize={{ base: '3xl', md: '4xl' }}>Detect Fake News</Heading>          
+            <Heading fontSize={{ base: '3xl', md: '4xl' }}>Browse Recommendations</Heading>          
             <HStack spacing="4" display={{ base: "none", lg: "flex" }}>
               <motion.img
                 src={logo}
@@ -396,4 +396,4 @@ const StartNewDetection = ({ addDetection }) => {
   );
 };
 
-export default StartNewDetection;
+export default BrowseRecommendations;

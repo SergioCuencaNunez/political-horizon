@@ -44,13 +44,13 @@ import { motion, AnimatePresence } from "framer-motion";
 const primaryColorLight = '#c6001e';
 const primaryColorDark = '#cf2640';
 
-import logoVerifyBright from "../assets/logo-bright.png";
-import logoVerifyDark from "../assets/logo-dark.png";
+import logoBalanceBright from "../assets/logo-balance-bright.png";
+import logoBalanceDark from "../assets/logo-balance-dark.png";
 
-const MyClaimChecks = ({ claimChecks, deleteClaimCheck }) => {
+const TopSourcesOutlets = ({ claimChecks, deleteClaimCheck }) => {
   const navigate = useNavigate();
 
-  const logo = useColorModeValue(logoVerifyBright, logoVerifyDark);
+  const logo = useColorModeValue(logoBalanceBright, logoBalanceDark);
   const logoHeight = useBreakpointValue({ base: '28px', md: '33px' });
   
   const primaryColor = useColorModeValue(primaryColorLight, primaryColorDark);
@@ -414,4 +414,4 @@ const MyClaimChecks = ({ claimChecks, deleteClaimCheck }) => {
   );
 };
 
-export default MyClaimChecks;
+export default TopSourcesOutlets;
