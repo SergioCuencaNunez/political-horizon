@@ -82,12 +82,12 @@ app.get("/check-login-email", (req, res) => {
 
 // Sign Up Route
 app.post("/signup", (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, politicalLeaning } = req.body;
   const hashedPassword = bcrypt.hashSync(password, 10);
   const query =
-    "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, 'user')";
+    "INSERT INTO users (username, email, password, political_leaning, role) VALUES (?, ?, ?, ?, 'user')";
 
-  db.run(query, [username, email, hashedPassword], function (err) {
+  db.run(query, [username, email, hashedPassword, politicalLeaning], function (err) {
     if (err) return res.status(400).json({ error: "User already exists" });
 
     // Generate a JWT for the new user
@@ -126,14 +126,14 @@ const verifyToken = (req, res, next) => {
 
 // Update User Info Endpoint
 app.post("/account-update", verifyToken, (req, res) => {
-  const { name, email } = req.body;
-
-  if (!name || !email) {
-    return res.status(400).json({ error: "Name and email are required." });
+  const { name, email, politicalLeaning } = req.body;
+  
+  if (!name || !email || !politicalLeaning) {
+    return res.status(400).json({ error: "Name, email and political leaning are required." });
   }
 
-  const query = "UPDATE users SET username = ?, email = ? WHERE id = ?";
-  db.run(query, [name, email, req.user.id], function (err) {
+  const query = "UPDATE users SET username = ?, email = ?, political_leaning = ? WHERE id = ?";
+  db.run(query, [name, email, politicalLeaning, req.user.id], function (err) {
     if (err) return res.status(500).json({ error: "Failed to update profile." });
     res.json({ message: "Profile updated successfully." });
   });
@@ -192,12 +192,12 @@ app.delete("/delete-account", verifyToken, (req, res) => {
 
 // Protected Route
 app.get("/profile", verifyToken, (req, res) => {
-  const query = "SELECT username, email FROM users WHERE id = ?";
+  const query = "SELECT username, email, political_leaning FROM users WHERE id = ?";
   db.get(query, [req.user.id], (err, user) => {
     if (err) return res.status(500).json({ error: "Database error" });
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    res.json({ username: user.username, email: user.email });
+    res.json({ username: user.username, email: user.email, political_leaning: user.political_leaning });
   });
 });
 

@@ -43,6 +43,8 @@ const SignUp = () => {
   // const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
     
   const [alert, setAlert] = useState(null);
+  const [politicalLeaning, setPoliticalLeaning] = useState("");
+  const [politicalLeaningAlert, setPoliticalLeaningAlert] = useState(null);
   const [emailAlert, setEmailAlert] = useState(null);
   const [passwordAlert, setPasswordAlert] = useState(null);
   const [checkboxAlert, setCheckboxAlert] = useState(null);
@@ -66,6 +68,7 @@ const SignUp = () => {
     setAlert(null);
     setEmailAlert(null);
     setPasswordAlert(null);
+    setPoliticalLeaningAlert(null);
     setCheckboxAlert(null);
   };
 
@@ -91,6 +94,12 @@ const SignUp = () => {
     const username = event.target.username.value || email.split("@")[0];
     const password = event.target.password.value;
 
+    if (!politicalLeaning) {
+      setPoliticalLeaningAlert("Please select your Political Leaning.");
+      setTimeout(() => setPoliticalLeaningAlert(null), 3000);
+      return;
+    }
+    
     if (!termsChecked) {
       setCheckboxAlert("You must agree to the Privacy Policy and Terms & Conditions.");
       setTimeout(() => setCheckboxAlert(null), 3000);
@@ -129,6 +138,7 @@ const SignUp = () => {
           username,
           email,
           password,
+          politicalLeaning,
         }),
       });
       const data = await response.json();
@@ -149,6 +159,13 @@ const SignUp = () => {
       setTimeout(() => setAlert(null), 3000);
     }
   };
+
+  const handlePoliticalLeaningBlur = async () => {
+    if (!politicalLeaning) {
+      setPoliticalLeaningAlert("Please select your Political Leaning.");
+      setTimeout(() => setPoliticalLeaningAlert(null), 3000);
+    }
+  }
 
   const handleEmailBlur = async (event) => {
     const email = event.target.value;
@@ -234,7 +251,7 @@ const SignUp = () => {
           <motion.div
             initial={{ height: 0 }}
             animate={{
-              height: alert || emailAlert || passwordAlert || checkboxAlert || signingUpMessage ? "auto" : 0,
+              height: alert || politicalLeaningAlert || emailAlert || passwordAlert || checkboxAlert || signingUpMessage ? "auto" : 0,
             }}
             exit={{ height: 0 }}
             transition={{ duration: 0.3 }}
@@ -253,6 +270,21 @@ const SignUp = () => {
                   <Alert status={alert.type}>
                     <AlertIcon />
                     <AlertDescription>{alert.message}</AlertDescription>
+                  </Alert>
+                </motion.div>
+              )}
+              {politicalLeaningAlert && (
+                <motion.div
+                  key="politicalLeaningAlert"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  style={{ marginBottom: "8px" }}
+                >
+                  <Alert status="error">
+                    <AlertIcon />
+                    <AlertDescription>{politicalLeaningAlert}</AlertDescription>
                   </Alert>
                 </motion.div>
               )}
@@ -333,10 +365,15 @@ const SignUp = () => {
                   />
                 </InputGroup>
               </FormControl>
-              <FormControl id="politicalLeaning" isRequired>
-                <FormLabel>Political Leaning</FormLabel>
+              <FormControl id="politicalLeaning">
+                <FormLabel>Political Leaning <Text as="span" color={useColorModeValue("red.500", "red.300")}>*</Text></FormLabel>
                 <InputGroup>
-                  <Select name="politicalLeaning" placeholder="Select your political leaning">
+                  <Select 
+                    placeholder="Select your political leaning"
+                    value={politicalLeaning}
+                    onChange={(e) => setPoliticalLeaning(e.target.value)}
+                    onBlur={handlePoliticalLeaningBlur}
+                  >
                     <option value="Left">Left</option>
                     <option value="Center">Center</option>
                     <option value="Right">Right</option>
@@ -346,8 +383,8 @@ const SignUp = () => {
                   Please select the most accurate option to ensure a more balanced and personalized experience.
                 </Text>
             </FormControl>
-              <FormControl id="email" isRequired isInvalid={!emailValid}>
-                <FormLabel>Email</FormLabel>
+              <FormControl id="email" isInvalid={!emailValid}>
+                <FormLabel>Email <Text as="span" color={useColorModeValue("red.500", "red.300")}>*</Text></FormLabel>
                 <InputGroup>
                   <InputLeftElement pointerEvents="none">
                     <EmailIcon color="gray.500" />
@@ -360,8 +397,8 @@ const SignUp = () => {
                   />
                 </InputGroup>
               </FormControl>
-              <FormControl id="password" isRequired isInvalid={!passwordValid}>
-                <FormLabel>Password</FormLabel>
+              <FormControl id="password" isInvalid={!passwordValid}>
+                <FormLabel>Password <Text as="span" color={useColorModeValue("red.500", "red.300")}>*</Text></FormLabel>
                 <InputGroup>
                   <InputLeftElement pointerEvents="none">
                     <LockIcon color="gray.500" />
