@@ -165,6 +165,7 @@ cython_debug/
 .DS_Store
 
 # Git LFS local files for the moment2
+backend/db/*
 backend/data/*
 backend/models/*
 backend/preprocessing_artifacts/*
