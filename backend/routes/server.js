@@ -6,7 +6,7 @@ const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
-const PORT = process.env.PORT || 5002;
+const PORT = process.env.PORT || 5001;
 const SECRET_KEY = "secret_key"; // Replace with strong key in production
 
 //app.use(cors());
