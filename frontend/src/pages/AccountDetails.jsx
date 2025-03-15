@@ -24,6 +24,8 @@ import {
   ModalCloseButton,
   Progress,
   Text,
+  Select,
+  InputGroup,
 } from "@chakra-ui/react";
 import { SunIcon, MoonIcon } from "@chakra-ui/icons";
 import { motion, AnimatePresence } from "framer-motion";
@@ -49,6 +51,7 @@ const AccountDetails = () => {
   const { colorMode, toggleColorMode } = useColorMode();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [politicalLeaning, setPoliticalLeaning] = useState("");
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -59,6 +62,7 @@ const AccountDetails = () => {
   const [oldPasswordValid, setOldPasswordValid] = useState(true);
   const [originalName, setOriginalName] = useState("");
   const [originalEmail, setOriginalEmail] = useState("");
+  const [originalPoliticalLeaning, setOriginalPoliticalLeaning] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [confirmPasswordStrength, setConfirmPasswordStrength] = useState(0);
@@ -83,8 +87,10 @@ const AccountDetails = () => {
       if (response.ok) {
         setName(data.username);
         setEmail(data.email);
+        setPoliticalLeaning(data.political_leaning);
         setOriginalName(data.username);
         setOriginalEmail(data.email);
+        setOriginalPoliticalLeaning(data.political_leaning);
       }
     };
 
@@ -100,7 +106,8 @@ const AccountDetails = () => {
     if (response.ok) {
       setOriginalName(data.username);
       setOriginalEmail(data.email);
-      return data.username === name && data.email === email;
+      setOriginalPoliticalLeaning(data.political_leaning);
+      return data.username === name && data.email === email && data.political_leaning === politicalLeaning;
     }
     return false;
   };
@@ -117,7 +124,7 @@ const AccountDetails = () => {
       setAlert({
         type: "info",
         message:
-          "Name and email are not updated because they are the same as the current values.",
+          "Name, Email and Political Leaning are not updated because they are the same as the current values.",
       });
       resetAlert();
       return;
@@ -130,7 +137,7 @@ const AccountDetails = () => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ name, email }),
+      body: JSON.stringify({ name, email, politicalLeaning }),
     });
     if (response.ok) {
       setAlert({ type: "success", message: "Profile updated successfully." });
@@ -324,21 +331,36 @@ const AccountDetails = () => {
                   alignItems={{ base: "flex-start", lg: "center" }}
               >
                   <FormControl>
-                  <FormLabel>Name</FormLabel>
-                  <Input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter your name"
-                  />
+                    <FormLabel>Name</FormLabel>
+                    <Input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Enter your name"
+                    />
                   </FormControl>
                   <FormControl isInvalid={!emailValid}>
-                  <FormLabel>Email</FormLabel>
-                  <Input
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      onBlur={() => setEmailValid(validateEmail(email))}
-                      placeholder="Enter your email"
-                  />
+                    <FormLabel>Email</FormLabel>
+                    <Input
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        onBlur={() => setEmailValid(validateEmail(email))}
+                        placeholder="Enter your email"
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Political Leaning</FormLabel>
+                    <InputGroup>
+                      <Select 
+                        name="politicalLeaning"
+                        value={politicalLeaning}
+                        onChange={(e) => setPoliticalLeaning(e.target.value)}
+                        placeholder="Select your political leaning"
+                      >
+                        <option value="Left">Left</option>
+                        <option value="Center">Center</option>
+                        <option value="Right">Right</option>
+                      </Select>
+                    </InputGroup>
                   </FormControl>
               </Flex>
               <Flex

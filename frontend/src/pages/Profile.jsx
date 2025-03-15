@@ -517,7 +517,7 @@ const Profile = () => {
             <Avatar name={user.username} size="lg" bg={avatarBgColor} color="white" />
             <Box>
               <Text fontWeight="bold" isTruncated>{user.username}</Text>
-              <Text fontSize="sm" color={textColorAvatar} isTruncated>
+              <Text fontSize="13px" color={textColorAvatar} isTruncated>
                 {user.email}
               </Text>
             </Box>
