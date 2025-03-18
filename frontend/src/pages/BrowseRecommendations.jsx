@@ -25,9 +25,8 @@ import {
   Spinner,
   useDisclosure,
 } from "@chakra-ui/react";
-import { SunIcon, MoonIcon, InfoOutlineIcon, ExternalLinkIcon, RepeatIcon, SmallAddIcon } from "@chakra-ui/icons";
+import { SunIcon, MoonIcon, InfoOutlineIcon, ExternalLinkIcon, RepeatIcon } from "@chakra-ui/icons";
 import { FaThumbsUp, FaThumbsDown } from "react-icons/fa6";
-import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { debounce } from "lodash";
 
