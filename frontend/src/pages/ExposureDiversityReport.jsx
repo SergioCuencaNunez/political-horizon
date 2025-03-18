@@ -300,16 +300,14 @@ const ExposureDiversityReport = ({ addClaimCheck }) => {
                 Please input the query in the provided field to proceed with verification. 
               </ModalBody>
               <ModalFooter>
-                <Button
-                  bg={primaryColor}
-                  color="white"
-                  _hover={{ bg: hoverColor }}
-                  _active={{ bg: activeColor }}
-                  size="md"
-                  onClick={onAlertClose}
-                >
-                  Close
-                </Button>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button
+                    size="md"
+                    onClick={onAlertClose}
+                  >
+                    Close
+                  </Button>
+                </motion.div>
               </ModalFooter>
             </ModalContent>
           </Modal>
@@ -326,16 +324,14 @@ const ExposureDiversityReport = ({ addClaimCheck }) => {
                 Please select a language before proceeding with the verification.
               </ModalBody>
               <ModalFooter>
-                <Button
-                  bg={primaryColor}
-                  color="white"
-                  _hover={{ bg: hoverColor }}
-                  _active={{ bg: activeColor }}
-                  size="md"
-                  onClick={onLanguageAlertClose}
-                >
-                  Close
-                </Button>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button
+                    size="md"
+                    onClick={onLanguageAlertClose}
+                  >
+                    Close
+                  </Button>
+                </motion.div>
               </ModalFooter>
             </ModalContent>
           </Modal>
@@ -352,16 +348,14 @@ const ExposureDiversityReport = ({ addClaimCheck }) => {
                 <Text>{errorMessage}</Text>
               </ModalBody>
               <ModalFooter>
-                <Button
-                  bg={primaryColor}
-                  color="white"
-                  _hover={{ bg: hoverColor }}
-                  _active={{ bg: activeColor }}
-                  size="md"
-                  onClick={onErrorClose}
-                >
-                  Close
-                </Button>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button
+                    size="md"
+                    onClick={onErrorClose}
+                  >
+                    Close
+                  </Button>
+                </motion.div>
               </ModalFooter>
             </ModalContent>
           </Modal>
@@ -383,16 +377,14 @@ const ExposureDiversityReport = ({ addClaimCheck }) => {
                 </UnorderedList>
               </ModalBody>
               <ModalFooter>
-                <Button
-                  bg={primaryColor}
-                  color="white"
-                  _hover={{ bg: hoverColor }}
-                  _active={{ bg: activeColor }}
-                  size="md"
-                  onClick={onNotClaimsMatchingClose}
-                >
-                  Close
-                </Button>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button
+                    size="md"
+                    onClick={onNotClaimsMatchingClose}
+                  >
+                    Close
+                  </Button>
+                </motion.div>
               </ModalFooter>
             </ModalContent>
           </Modal>

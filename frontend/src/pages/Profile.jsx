@@ -1214,12 +1214,16 @@ const Profile = () => {
                 : "Are you sure you want to delete the selected detections?"}
             </ModalBody>
             <ModalFooter>
-              <Button colorScheme="red" mr={3} onClick={confirmDeleteDetection}>
-                Delete
-              </Button>
-              <Button variant="ghost" onClick={onDetectionModalClose}>
-                Cancel
-              </Button>
+              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                <Button colorScheme="blue" mr={3} onClick={confirmDeleteDetection}>
+                  Delete
+                </Button>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                <Button onClick={onDetectionModalClose}>
+                  Cancel
+                </Button>
+              </motion.div>
             </ModalFooter>
           </ModalContent>
         </Modal>
@@ -1238,12 +1242,16 @@ const Profile = () => {
                 : "Are you sure you want to delete the selected claim checks?"}
             </ModalBody>
             <ModalFooter>
-              <Button colorScheme="red" mr={3} onClick={confirmDeleteClaimCheck}>
-                Delete
-              </Button>
-              <Button variant="ghost" onClick={onClaimModalClose}>
-                Cancel
-              </Button>
+              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                <Button colorScheme="blue" mr={3} onClick={confirmDeleteClaimCheck}>
+                  Delete
+                </Button>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                <Button onClick={onClaimModalClose}>
+                  Cancel
+                </Button>
+              </motion.div>
             </ModalFooter>
           </ModalContent>
         </Modal>

@@ -237,38 +237,6 @@ app.post("/user/interactions", verifyToken, (req, res) => {
   });
 });
 
-// Check if user should update recommendations
-app.get("/user/should-update-recommendations", verifyToken, (req, res) => {
-  const query = `
-    SELECT COUNT(*) AS count 
-    FROM user_interactions 
-    WHERE user_id = ? AND interaction_timestamp >= datetime('now', '-24 hours');
-  `;
-
-  db.get(query, [req.user.id], (err, row) => {
-    if (err) return res.status(500).json({ error: "Failed to check interaction count" });
-
-    if (row.count >= 5) {
-      res.json({ shouldUpdate: true });  // Generate new recommendations
-    } else {
-      res.json({ shouldUpdate: false }); // Keep showing stored recommendations
-    }
-  });
-});
-
-// Reset interactions after fetching new recommendations
-app.post("/user/reset-interactions", verifyToken, (req, res) => {
-  const query = `
-    DELETE FROM user_interactions 
-    WHERE user_id = ? AND interaction_timestamp >= datetime('now', '-24 hours');
-  `;
-
-  db.run(query, [req.user.id], function (err) {
-    if (err) return res.status(500).json({ error: "Failed to reset interactions" });
-    res.json({ success: true, message: "Interactions reset after fetching new recommendations" });
-  });
-});
-
 // Fetch 10 random articles if the user is new
 app.get("/articles/random", verifyToken, (req, res) => {
   const userQuery = `SELECT political_leaning FROM users WHERE id = ?`;

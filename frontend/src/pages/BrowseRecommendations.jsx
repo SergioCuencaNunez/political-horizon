@@ -42,7 +42,6 @@ import logoExploreBright from "../assets/logo-explore-bright.png";
 import logoExploreDark from "../assets/logo-explore-dark.png";
 
 const BrowseRecommendations = () => {
-  const navigate = useNavigate();
   // For development only
   const BACKEND_URL_DB = `${window.location.protocol}//${window.location.hostname}:5001`;
   const BACKEND_URL_API = `${window.location.protocol}//${window.location.hostname}:5002`;
@@ -59,6 +58,7 @@ const BrowseRecommendations = () => {
   const hoverColor = useColorModeValue(primaryHoverLight, primaryHoverDark);
   const activeColor = useColorModeValue(primaryActiveLight, primaryActiveDark);
   const textColor = useColorModeValue("black", "white");
+  const textColor2 = useColorModeValue('gray.500', 'gray.300');
   const refreshBg = useColorModeValue("gray.100", "gray.600");
   const refreshHoverBg = useColorModeValue("gray.200", "gray.500");
   const refreshActiveBg = useColorModeValue("gray.300", "gray.400");
@@ -69,13 +69,12 @@ const BrowseRecommendations = () => {
   const hasFetched = useRef(false);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [thresholdMet, setThresholdMet] = useState(false);
   const [interactionsCount, setInteractionsCount] = useState(0);
 
   const [userStatus, setUserStatus] = useState(null);
 
-  const [hasLoaded, setHasLoaded] = useState(false); // Track initial load
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [flippedCards, setFlippedCards] = useState({});
   const [filters, setFilters] = useState({search: "", politicalLeaning: "All", sortBy: "newest",});
   const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
   const [animationKey, setAnimationKey] = useState(0);
@@ -87,6 +86,9 @@ const BrowseRecommendations = () => {
   const { isOpen: isErrorOpen, onOpen: onErrorOpen, onClose: onErrorClose } = useDisclosure();
 
   const toggleTransparency = () => setShowTransparency(!showTransparency);
+
+  const headingText = useBreakpointValue({ base: "Browse Feed", lg: "Browse Recommendations" });
+  const articleHeight = useBreakpointValue({ base: "min(200px, 18vh)", md: "225px", lg: "min(250px, 20vh)" });
 
   useEffect(() => {
     if (!hasFetched.current) {
@@ -126,7 +128,7 @@ const BrowseRecommendations = () => {
       if (hasLoaded) { // Only trigger animations after initial load
         setAnimationKey((prev) => prev + 1);
       }
-    }, 500) // 500ms delay
+    }, 500)
   ).current;
     
   useEffect(() => {
@@ -139,16 +141,9 @@ const BrowseRecommendations = () => {
 
   useEffect(() => {
     if (!hasLoaded) {
-      setHasLoaded(true); // Mark initial load complete
+      setHasLoaded(true);
     }
   }, []);
-  
-  const triggerAnimationIfNeeded = (newCount) => {
-    if (newCount !== prevFilteredCount.current) {
-      setAnimationKey((prev) => prev + 1);
-      prevFilteredCount.current = newCount;
-    }
-  };
   
   const updateFilters = (newFilters) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
@@ -184,14 +179,6 @@ const BrowseRecommendations = () => {
       default: return 0;
     }
   });
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      triggerAnimationIfNeeded(filteredArticles.length);
-    }, 200); // 200ms delay
-  
-    return () => clearTimeout(timer);
-  }, [filteredArticles]);
         
   const checkUserStatus = async () => {
     setLoading(true);
@@ -201,14 +188,14 @@ const BrowseRecommendations = () => {
       });
       const data = await response.json();
       setUserStatus(data.status);
-      console.log(data);
       if (data.status === "new") {
         fetchRandomArticles();
       } else {
+        setArticles([]);
         fetchRecommendations();
       }
     } catch (error) {
-      console.error("Error checking user status:", error);
+      setErrorMessage(`Error checking user status: ${error}`);
     }
   };
 
@@ -221,7 +208,7 @@ const BrowseRecommendations = () => {
       const data = await response.json();
       setArticles(data);
     } catch (error) {
-      console.error("Error fetching random articles:", error);
+      setErrorMessage(`Error fetching random articles: ${error}`);
     } finally {
       setLoading(false);
     }
@@ -230,13 +217,15 @@ const BrowseRecommendations = () => {
   const fetchRecommendations = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL_DB}/articles/recommended?page=${page}`, {
+      const response = await fetch(`${BACKEND_URL_DB}/articles/recommended`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
+      if (!response.ok) throw new Error("Failed to fetch recommendations");
       const data = await response.json();
-      setArticles((prev) => [...prev, ...data]);
+      setArticles([]);
+      setArticles(data);
     } catch (error) {
-      console.error("Error fetching recommendations:", error);
+      setErrorMessage(`Error fetching recommendations: ${error}`);
     } finally {
       setLoading(false);
     }
@@ -244,7 +233,7 @@ const BrowseRecommendations = () => {
 
   const handleInteraction = async (news_id, interaction_type, read_time_seconds = 0) => {
     try {
-      await fetch(`${BACKEND_URL_DB}/user/interactions`, {
+      const response = await fetch(`${BACKEND_URL_DB}/user/interactions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -252,9 +241,13 @@ const BrowseRecommendations = () => {
         },
         body: JSON.stringify({ news_id, interaction_type, read_time_seconds }),
       });
-      checkThreshold();
+  
+      if (!response.ok) throw new Error("Failed to store interaction");
+  
+      setInteractionsCount((prev) => prev + 1);
+
     } catch (error) {
-      console.error("Error storing interaction:", error);
+      setErrorMessage(`Error storing interaction: ${error}`);
     }
   };
 
@@ -264,31 +257,65 @@ const BrowseRecommendations = () => {
     window.open(url, "_blank");
   };
 
-  const checkThreshold = async () => {
-    try {
-      const response = await fetch(`${BACKEND_URL_DB}/user/should-update-recommendations`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      const data = await response.json();
-      setThresholdMet(data.shouldUpdate);
-    } catch (error) {
-      console.error("Error checking threshold:", error);
+  const handleRecommendations = () => {
+    if (interactionsCount < 3) {
+      setErrorMessage("Interact with at least 3 articles to help us tailor recommendations just for you.");
+      onErrorOpen();
+      return;
     }
-  };
-
-  const generateRecommendations = async () => {
+  
     onSpinnerOpen();
-    try {
-      await fetch(`${BACKEND_URL_DB}/user/generate-recommendations`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      setArticles([]);
-      fetchRecommendations();
-    } catch (error) {
-      console.error("Error generating recommendations:", error);
-    } finally {
-      onSpinnerClose();
-    }
+  
+    setTimeout(async () => {
+      try {
+        const token = localStorage.getItem("token");
+        
+        const response = await fetch(`${BACKEND_URL_API}/user/generate-recommendations`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ user_id: localStorage.getItem("user_id") }),
+        });
+  
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to generate recommendations.");
+        }
+  
+        const result = await response.json();
+  
+        if (result.success && result.recommendations.length > 0) {
+          setArticles(result.recommendations);
+          
+          const statusResponse = await fetch(`${BACKEND_URL_DB}/user/status`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const statusData = await statusResponse.json();
+          setUserStatus(statusData.status);
+        } else {
+          setErrorMessage("No recommendations generated. Try interacting with more articles.");
+          onErrorOpen();
+        }
+      } catch (error) {
+        if (!error.message.includes("No valid articles")) {
+          setErrorMessage(`Error generating recommendations. ${error.message}`);
+        } else {
+          setErrorMessage(error.message);
+        }
+        onErrorOpen();
+      } finally {
+        onSpinnerClose();
+      }
+    }, 5000);
+  };  
+
+  const handleFlip = (articleId) => {
+    setFlippedCards((prev) => ({
+      ...prev,
+      [articleId]: !prev[articleId],
+    }));
   };
   
   return (
@@ -301,7 +328,7 @@ const BrowseRecommendations = () => {
       <Box px={{ md: 4 }} py={{ md: 6 }}>
         <Flex direction="column" bg={cardBg} p={8} borderRadius="md" shadow="md">
           <Flex justify="space-between" align="center" mb="4">
-            <Heading fontSize={{ base: '3xl', md: '4xl' }}>Browse Recommendations</Heading>          
+            <Heading fontSize={{ base: "3xl", md: "4xl"}}>{headingText}</Heading>          
             <HStack spacing="4" display={{ base: "none", lg: "flex" }}>
               <motion.img
                 src={logo}
@@ -344,9 +371,14 @@ const BrowseRecommendations = () => {
             </HStack>
           </Flex>
           <Box borderBottom="1px" borderColor="gray.300" mb="4"></Box>
-          <Text mb="4" textAlign="justify">Your recommendations are personalized based on your reading history while ensuring a diverse and balanced perspective, helping you explore different viewpoints and stay informed with a well-rounded news feed.</Text>
+          <Text mb="4" textAlign="justify">
+              {useBreakpointValue({
+                base: "Your recommendations are personalized based on your reading history while ensuring a diverse and balanced perspective, helping you explore different viewpoints.",
+                lg: "Your recommendations are personalized based on your reading history while ensuring a diverse and balanced perspective, helping you explore different viewpoints and stay informed with a well-rounded news feed.",
+              })}
+            </Text>
           {userStatus === "new" && <Text mb="4" fontSize="sm" color="gray.500">These are your first 10 articles to help us tune your interests.</Text>}
-          <Flex gap="4" mb="5">
+          <Flex gap="4" mb="6">
             <Input placeholder="Search news..." value={filters.search} onChange={(e) => updateFilters({ search: e.target.value })} />
             <Select value={filters.politicalLeaning} onChange={(e) => updateFilters({ politicalLeaning: e.target.value })}>
               <option value="All">All</option>
@@ -365,13 +397,13 @@ const BrowseRecommendations = () => {
           </Flex>
           
           <motion.div
-            key={animationKey} // Forces re-mount on filtering & sorting
+            key={animationKey}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <Grid templateColumns={{ base: "repeat(1, 1fr)", md: "repeat(2, 1fr)" }} gap="4" mb="5">
+            <Grid templateColumns={{ base: "repeat(1, 1fr)", lg: "repeat(2, 1fr)" }} gap="4" mb="6">
               {filteredArticles.map((article, index) => (
                 <motion.div
                   key={article.id}
@@ -384,28 +416,119 @@ const BrowseRecommendations = () => {
                     scale: { type: "spring", stiffness: 300, damping: 20 },
                   }}
                 >
-                  <Flex key={article.id} p="5" borderRadius="md" shadow="md" direction="column" justify="center" height="100%" bg={modelCardBg}>
-                    <Text fontWeight="bold" fontSize="lg" mb="1">{article.headline}</Text>
-                    <Text fontSize="sm" color="gray.500" mb="2">{article.outlet} - {new Date(article.date_publish).toLocaleDateString()}</Text>
-                    <Badge
-                        colorScheme={article.political_leaning === "RIGHT" ? "red" : article.political_leaning === "LEFT" ? "blue" : "yellow"}
-                        width="fit-content"
-                        mb="4"
+                  <Box position="relative" height={articleHeight} perspective="1000px">
+                    <motion.div
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        transformStyle: "preserve-3d",
+                        position: "relative",
+                      }}
+                      animate={{ rotateY: flippedCards[article.id] ? 180 : 0 }}
+                      transition={{ duration: 0.6 }}
+                    >
+                      {/* Front Side */}
+                      <Flex
+                        p="5"
+                        borderRadius="md"
+                        shadow="md"
+                        direction="column"
+                        justify="center"
+                        height="100%"
+                        bg={modelCardBg}
+                        position="absolute"
+                        width="100%"
+                        transform="rotateY(0deg)"
+                        style={{ backfaceVisibility: "hidden" }}
                       >
-                        {article.political_leaning}
-                      </Badge>
-                    <HStack spacing="2">
-                      <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                        <IconButton icon={<FaThumbsUp />} onClick={() => handleInteraction(article.id, "like")} ></IconButton>
-                      </motion.div>
-                      <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                        <IconButton icon={<FaThumbsDown />} onClick={() => handleInteraction(article.id, "dislike")} ></IconButton>
+                        <Text fontWeight="bold" fontSize={{base: "md", lg: "lg"}} mb="1" textAlign="justify">
+                          {article.headline}
+                        </Text>
+                        <Text fontSize="sm" color={textColor2} mb="2">
+                          {article.outlet} - {new Date(article.date_publish).toLocaleDateString()}
+                        </Text>
+                        <Badge
+                          colorScheme={
+                            article.political_leaning === "RIGHT"
+                              ? "red"
+                              : article.political_leaning === "LEFT"
+                              ? "blue"
+                              : "yellow"
+                          }
+                          width="fit-content"
+                          mb="4"
+                        >
+                          {article.political_leaning}
+                        </Badge>
+                        <HStack spacing="2" justify="space-between" width="100%" flexWrap="wrap">
+                          <HStack spacing="2">
+                            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                              <IconButton
+                                icon={<FaThumbsUp />}
+                                onClick={() => handleInteraction(article.id, "like")}
+                              />
+                            </motion.div>
+                            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                              <IconButton
+                                icon={<FaThumbsDown />}
+                                onClick={() => handleInteraction(article.id, "dislike")}
+                              />
+                            </motion.div>
+                            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                              <Button
+                                leftIcon={<ExternalLinkIcon />}
+                                onClick={() => handleReadMore(article.id, article.url)}
+                                display={{ base: "none", md: "none", lg: "flex" }}
+                              >
+                                Read More
+                              </Button>
+                              <IconButton
+                                icon={<ExternalLinkIcon />}
+                                onClick={() => handleReadMore(article.id, article.url)}
+                                display={{ base: "flex", md: "flex", lg: "none" }}
+                              />
+                            </motion.div>
+                          </HStack>
+                          {userStatus === "returning" && article.source_article_headline && (
+                            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                              <IconButton
+                                icon={<InfoOutlineIcon />}
+                                onClick={() => handleFlip(article.id)}
+                              />
+                            </motion.div>
+                          )}
+                        </HStack>
+                      </Flex>
+                      {/* Back Side */}
+                      <Flex
+                        p="5"
+                        borderRadius="md"
+                        shadow="md"
+                        direction="column"
+                        justify="center"
+                        textAlign="center"
+                        height="100%"
+                        bg={modelCardBg}
+                        position="absolute"
+                        width="100%"
+                        transform="rotateY(180deg)"
+                        style={{ backfaceVisibility: "hidden" }}
+                      >
+                        <Text fontWeight="bold" fontSize={{base: "md", lg: "lg"}} mb="1">Why This Article?</Text>
+                        <Text fontSize={{base: "xs", lg:"sm"}} color={textColor2} mb="1">
+                          This article was recommended based on your interest in:
+                        </Text>
+                        <Text fontSize={{base: "sm", lg:"md"}} fontWeight="bold" mb="3">"{article.source_article_headline}"</Text>
+                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                          <IconButton
+                            icon={<RepeatIcon />}
+                            onClick={() => handleFlip(article.id)}
+                            alignSelf="center"
+                          />
                         </motion.div>
-                      <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                        <Button leftIcon={<ExternalLinkIcon />} onClick={() => handleReadMore(article.id, article.url)}>Read More</Button>
-                      </motion.div>
-                    </HStack>
-                  </Flex>
+                      </Flex>
+                    </motion.div>
+                  </Box>
                 </motion.div>
               ))}
             </Grid>
@@ -416,9 +539,18 @@ const BrowseRecommendations = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.2, duration: 0.5 }}
           >
-            <HStack mb="4" justify="center">
-              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+            <Box width={{base: "100%", md: "auto"}} mx="auto" mb="4">
+              <Flex
+                direction= "row"
+                justify="center"
+                align="center"
+                width="100%"
+                gap={{ base: "2", md: "4" }}
+              >
                 <Button
+                  as={motion.button}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                   leftIcon={<RepeatIcon />}
                   size="md"
                   bg={refreshBg}
@@ -429,22 +561,21 @@ const BrowseRecommendations = () => {
                 >
                   Refresh
                 </Button>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                 <Button
-                  leftIcon={<SmallAddIcon />}
+                  as={motion.button}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                   size="md"
                   bg={primaryColor}
                   color="white"
                   _hover={{ bg: hoverColor }}
                   _active={{ bg: activeColor }}
-                  isDisabled={interactionsCount < 3}
-                  onClick={fetchRecommendations}
+                  onClick={handleRecommendations}
                 >
                   Get Recommendations
                 </Button>
-              </motion.div>
-            </HStack>
+              </Flex>
+            </Box>
           </motion.div>
 
           {/* Transparency Section */}
@@ -481,7 +612,7 @@ const BrowseRecommendations = () => {
               >
               <ModalBody textAlign="center" py="6">
                 <Spinner size="xl" />
-                <Text mt="4">Analyzing News with Confidence Threshold... Please Wait.</Text>
+                <Text mt="4">Generating Recommendations... Please Wait.</Text>
               </ModalBody>
             </ModalContent>
           </Modal>
@@ -498,16 +629,14 @@ const BrowseRecommendations = () => {
                 Please fill in both the title and content fields to proceed with detecting fake news. 
               </ModalBody>
               <ModalFooter>
-                <Button
-                  bg={primaryColor}
-                  color="white"
-                  _hover={{ bg: hoverColor }}
-                  _active={{ bg: activeColor }}
-                  size="md"
-                  onClick={onAlertClose}
-                >
-                  Close
-                </Button>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button
+                    size="md"
+                    onClick={onAlertClose}
+                  >
+                    Close
+                  </Button>
+                </motion.div>
               </ModalFooter>
             </ModalContent>
           </Modal>
@@ -524,16 +653,14 @@ const BrowseRecommendations = () => {
                 <Text>{errorMessage}</Text>
               </ModalBody>
               <ModalFooter>
-                <Button
-                  bg={primaryColor}
-                  color="white"
-                  _hover={{ bg: hoverColor }}
-                  _active={{ bg: activeColor }}
-                  size="md"
-                  onClick={onErrorClose}
-                >
-                  Close
-                </Button>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button
+                    size="md"
+                    onClick={onErrorClose}
+                  >
+                    Close
+                  </Button>
+                </motion.div>
               </ModalFooter>
             </ModalContent>
           </Modal>

@@ -399,12 +399,14 @@ const TopSourcesOutlets = ({ claimChecks, deleteClaimCheck }) => {
                   : "Are you sure you want to delete the selected claim checks?"}
               </ModalBody>
               <ModalFooter>
-                <Button colorScheme="red" mr={3} onClick={confirmDelete}>
-                  Delete
-                </Button>
-                <Button variant="ghost" onClick={onClose}>
-                  Cancel
-                </Button>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button colorScheme="blue" mr={3} onClick={confirmDelete}>
+                    Delete
+                  </Button>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button onClick={onClose}>Cancel</Button>
+                </motion.div>
               </ModalFooter>
             </ModalContent>
           </Modal>
