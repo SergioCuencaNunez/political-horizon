@@ -62,7 +62,7 @@ def generate_recommendations():
 
         # Fetch only NEW interactions since the last recommendation request
         cursor.execute("""
-            SELECT news_id, interaction_type, read_time_seconds 
+            SELECT id, interaction_type, read_time_seconds 
             FROM user_interactions 
             WHERE user_id = ? AND interaction_timestamp > ?
         """, (user_id, last_recommendation_time))
@@ -74,13 +74,13 @@ def generate_recommendations():
         read_articles = set()
         disliked_articles = set()
 
-        for news_id, interaction_type, read_time_seconds in interactions:
+        for id, interaction_type, read_time_seconds in interactions:
             if interaction_type == "like":
-                liked_articles.add(news_id)
+                liked_articles.add(id)
             elif interaction_type == "dislike":
-                disliked_articles.add(news_id)
+                disliked_articles.add(id)
             elif interaction_type == "read" and read_time_seconds >= READ_TIME_THRESHOLD:
-                read_articles.add(news_id)  # Only recommend if read for long enough
+                read_articles.add(id)
 
         # Get all articles to use for recommendations
         candidate_articles = liked_articles.union(read_articles)
@@ -103,6 +103,7 @@ def generate_recommendations():
                     if rec["id"] not in disliked_articles:  # Exclude disliked-related recommendations
                         recommendations.append({
                             "id": int(rec["id"]),
+                            "source_article_id": article_id,
                             "source_article_headline": source_headline,
                             "date_publish": rec["date_publish"],
                             "headline": rec["headline"],
@@ -114,9 +115,9 @@ def generate_recommendations():
         # Store recommendations in database
         for rec in recommendations:
             cursor.execute("""
-                INSERT INTO user_recommendations (id, user_id, source_article_headline, date_publish, headline, outlet, url, political_leaning) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (rec["id"], user_id, rec["source_article_headline"], rec["date_publish"], rec["headline"], rec["outlet"], rec["url"], rec["political_leaning"]))
+                INSERT INTO user_recommendations (id, user_id, source_article_id, source_article_headline, date_publish, headline, outlet, url, political_leaning) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (rec["id"], user_id, rec["source_article_id"], rec["source_article_headline"], rec["date_publish"], rec["headline"], rec["outlet"], rec["url"], rec["political_leaning"]))
 
         cursor.execute("""
             UPDATE users SET last_recommendation_timestamp = ? WHERE id = ?

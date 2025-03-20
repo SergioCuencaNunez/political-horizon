@@ -268,6 +268,7 @@ const Profile = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
+        console.log(data);
 
         if (response.ok) {
           setInteractions(data);

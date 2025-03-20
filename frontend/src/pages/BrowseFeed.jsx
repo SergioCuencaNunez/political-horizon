@@ -227,7 +227,7 @@ const BrowseFeed = () => {
     }
   };
 
-  const handleInteraction = async (news_id, interaction_type, read_time_seconds = 0) => {
+  const handleInteraction = async (id, interaction_type, read_time_seconds = 0) => {
     try {
       const response = await fetch(`${BACKEND_URL_DB}/user/interactions`, {
         method: "POST",
@@ -235,7 +235,7 @@ const BrowseFeed = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify({ news_id, interaction_type, read_time_seconds }),
+        body: JSON.stringify({ id, interaction_type, read_time_seconds }),
       });
   
       if (!response.ok) throw new Error("Failed to store interaction");
@@ -513,6 +513,7 @@ const BrowseFeed = () => {
                         direction="column"
                         justify="center"
                         textAlign="center"
+                        minHeight="200px"
                         height="100%"
                         bg={modelCardBg}
                         position="absolute"

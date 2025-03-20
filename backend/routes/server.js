@@ -220,18 +220,18 @@ app.get("/user/status", verifyToken, (req, res) => {
 
 // Store user interactions with articles
 app.post("/user/interactions", verifyToken, (req, res) => {
-  const { news_id, interaction_type, read_time_seconds } = req.body;
+  const { id, interaction_type, read_time_seconds } = req.body;
 
-  if (!news_id || !interaction_type) {
+  if (!id || !interaction_type) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   const query = `
-    INSERT INTO user_interactions (user_id, news_id, interaction_type, read_time_seconds) 
+    INSERT INTO user_interactions (id, user_id, interaction_type, read_time_seconds) 
     VALUES (?, ?, ?, ?)
   `;
 
-  db.run(query, [req.user.id, news_id, interaction_type, read_time_seconds || 0], function (err) {
+  db.run(query, [id, req.user.id, interaction_type, read_time_seconds || 0], function (err) {
     if (err) return res.status(500).json({ error: "Failed to store interaction" });
     res.json({ success: true, message: "Interaction stored", interaction_id: this.lastID });
   });
@@ -239,39 +239,48 @@ app.post("/user/interactions", verifyToken, (req, res) => {
 
 // Fetch user interactions along with recommendations
 app.get("/user/interactions", verifyToken, (req, res) => {
-  const query = `
+  const interactionsQuery = `
     SELECT * FROM user_interactions 
     WHERE user_id = ? 
     ORDER BY interaction_timestamp DESC;
   `;
 
-  db.all(query, [req.user.id], (err, interactions) => {
+  db.all(interactionsQuery, [req.user.id], (err, interactions) => {
     if (err) return res.status(500).json({ error: "Failed to fetch interactions" });
 
-    // Fetch recommendations separately and merge them into the response
+    if (interactions.length === 0) return res.json([]); // No interactions
+
+    // Fetch recommendations only for "like" or "read more (120s+)" interactions
+    const interactionIds = interactions
+      .filter((interaction) => 
+        interaction.interaction_type === "like" || interaction.read_time_seconds >= 120
+      )
+      .map((interaction) => interaction.id);
+
+    if (interactionIds.length === 0) {
+      return res.json(interactions.map((interaction) => ({ ...interaction, recommendations: [] })));
+    }
+
     const recommendationsQuery = `
-      SELECT * FROM user_recommendations 
-      WHERE user_id = ?
-      ORDER BY date_publish DESC;
+      SELECT * FROM user_recommendations
+      WHERE user_id = ? 
+      AND source_article_id IN (${interactionIds.map(() => "?").join(",")})
+      ORDER BY date_publish DESC
+      LIMIT 5;
     `;
 
-    db.all(recommendationsQuery, [req.user.id], (err, recommendations) => {
+    db.all(recommendationsQuery, [req.user.id, ...interactionIds], (err, recommendations) => {
       if (err) return res.status(500).json({ error: "Failed to fetch recommendations" });
 
-      // Group recommendations by interaction type
+      // Attach recommendations to the corresponding interaction
       const interactionsWithRecommendations = interactions.map((interaction) => {
-        const matchingRecommendations = recommendations.filter(
-          (rec) => rec.source_article_headline === interaction.news_id
-        );
-
-        return {
-          ...interaction,
-          recommendations: {
-            like: matchingRecommendations.filter((rec) => rec.political_leaning === "like"),
-            dislike: matchingRecommendations.filter((rec) => rec.political_leaning === "dislike"),
-            read_more: matchingRecommendations.filter((rec) => rec.political_leaning === "read_more"),
-          },
-        };
+        if (interaction.interaction_type === "like" || interaction.read_time_seconds >= 120) {
+          return {
+            ...interaction,
+            recommendations: recommendations.filter((rec) => rec.source_article_id === interaction.id).slice(0, 5),
+          };
+        }
+        return { ...interaction, recommendations: [] }; // No recommendations for dislikes
       });
 
       res.json(interactionsWithRecommendations);

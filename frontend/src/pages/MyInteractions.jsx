@@ -160,56 +160,60 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                 <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
                   <Thead>
                     <Tr>
-                      <Th width="15%">Date</Th>
-                      <Th width="25%">Interaction Type</Th>
-                      <Th width="50%">Recommendations</Th>
-                      <Th width="5%">
-                        <IconButton
-                          aria-label="Toggle Sort Order"
-                          icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
-                          size="xs"
-                          variant="ghost"
-                          onClick={toggleSortOrder}
-                        />
+                      <Th width="15%" textAlign="center">
+                        <Flex align="center" justify="center">
+                          <b>Date</b>
+                          <IconButton
+                            aria-label="Toggle Sort Order"
+                            icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
+                            size="xs"
+                            variant="ghost"
+                            onClick={toggleSortOrder}
+                            ml="1"
+                          />
+                        </Flex>
                       </Th>
-                      <Th width="5%">Remove</Th>
-                      <Th width="5%">Select</Th>
+                      <Th width="15%" textAlign="center">Interaction</Th>
+                      <Th width="40%" textAlign="center">Recommendations</Th>
+                      <Th width="10%" textAlign="center">Remove</Th>
+                      <Th width="10%" textAlign="center">Select</Th>
                     </Tr>
                   </Thead>
                   <Tbody>
                     {sortedInteractions.map((interaction) => (
-                      <>
-                        <Tr key={interaction.id}>
-                          <Td>{formatDate(interaction.interaction_timestamp)}</Td>
-                          <Td>{interaction.interaction_type}</Td>
-                          <Td>
-                            <Table variant="unstyled" size="sm">
-                              <Tbody>
-                                {["Like", "Dislike", "Read More"].map((type) => (
-                                  <Tr key={`${interaction.id}-${type}`}>
-                                    <Td>{type}</Td>
-                                    <Td>{interaction.recommendations?.[type]?.join(", ") || "No recommendations"}</Td>
-                                  </Tr>
-                                ))}
-                              </Tbody>
-                            </Table>
-                          </Td>
-                          <Td>
-                            <IconButton
-                              icon={<FaTrashAlt />}
-                              colorScheme="red"
-                              size="sm"
-                              onClick={() => handleDelete(interaction)}
-                            />
-                          </Td>
-                          <Td>
-                            <Checkbox
-                              isChecked={selectedInteractions.some((item) => item.id === interaction.id)}
-                              onChange={(e) => handleSelectInteraction(interaction, e.target.checked)}
-                            />
-                          </Td>
-                        </Tr>
-                      </>
+                      <Tr key={interaction.id}>
+                        <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>
+                        <Td textAlign="center">{interaction.interaction_type}</Td>
+                        <Td textAlign="center">
+                          {interaction.recommendations.length > 0 ? (
+                            interaction.recommendations.map((rec, index) => (
+                              <Box key={index} mb={2}>
+                                <Text fontWeight="bold">{rec.headline}</Text>
+                                <Text fontSize="sm" color="gray.500">{rec.outlet}</Text>
+                                <a href={rec.url} target="_blank" rel="noopener noreferrer">
+                                  <Button size="xs" colorScheme="blue" variant="outline">Read</Button>
+                                </a>
+                              </Box>
+                            ))
+                          ) : (
+                            <Text color="gray.400">No recommendations</Text>
+                          )}
+                        </Td>
+                        <Td textAlign="center">
+                          <IconButton
+                            icon={<FaTrashAlt />}
+                            colorScheme="red"
+                            size="sm"
+                            onClick={() => handleDelete(interaction)}
+                          />
+                        </Td>
+                        <Td textAlign="center">
+                          <Checkbox
+                            isChecked={selectedInteractions.some((item) => item.id === interaction.id)}
+                            onChange={(e) => handleSelectInteraction(interaction, e.target.checked)}
+                          />
+                        </Td>
+                      </Tr>
                     ))}
                   </Tbody>
                 </Table>
