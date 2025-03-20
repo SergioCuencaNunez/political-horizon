@@ -86,8 +86,6 @@ const BrowseFeed = () => {
 
   const toggleTransparency = () => setShowTransparency(!showTransparency);
 
-  const articleHeight = useBreakpointValue({ base: "min(200px, 18vh)", md: "225px", lg: "min(250px, 20vh)" });
-
   useEffect(() => {
     if (!hasFetched.current) {
       hasFetched.current = true;
@@ -414,7 +412,7 @@ const BrowseFeed = () => {
                     scale: { type: "spring", stiffness: 300, damping: 20 },
                   }}
                 >
-                  <Box position="relative" height={articleHeight} perspective="1000px">
+                  <Box position="relative" minHeight="200px" perspective="1000px">
                     <motion.div
                       style={{
                         width: "100%",
@@ -432,6 +430,7 @@ const BrowseFeed = () => {
                         shadow="md"
                         direction="column"
                         justify="center"
+                        minHeight="200px"
                         height="100%"
                         bg={modelCardBg}
                         position="absolute"
@@ -440,10 +439,13 @@ const BrowseFeed = () => {
                         style={{ backfaceVisibility: "hidden" }}
                       >
                         <Text
-                          fontWeight="bold" fontSize={{ base: "md", lg: "lg" }} mb="1" textAlign="justify" noOfLines={3}
+                          fontWeight="bold" fontSize={{ base: "md", lg: "lg" }} mb="1" textAlign="justify"
                           sx={{
-                            overflowWrap: "break-word",
-                            hyphens: "auto",
+                            display: "-webkit-box",
+                            WebkitBoxOrient: "vertical",
+                            WebkitLineClamp: 2,
+                            overflow: "hidden",
+                            wordBreak: "break-word",
                           }}
                         >
                           {article.headline}

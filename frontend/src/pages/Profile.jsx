@@ -826,9 +826,9 @@ const Profile = () => {
                         icon: <FaNewspaper size="50px" color={primaryColor} style={{ margin: "auto" }} />,
                         title: "Personalized Recommendations",
                         text: {
-                          base: "Receive curated news articles, with controlled exposure.",
-                          md: "Receive curated news articles, with controlled exposure.",
-                          lg: "Receive curated news articles based on your interests, with controlled exposure to diverse viewpoints.",
+                          base: "Receive curated news, with controlled exposure.",
+                          md: "Receive curated news, with controlled exposure.",
+                          lg: "Receive curated news based on your interests, with controlled exposure to diverse viewpoints.",
                         },
                       },
                     ].map((item, index) => (
