@@ -40,7 +40,7 @@ const primaryActiveDark = '#e14f64';
 import logoExploreBright from "../assets/logo-explore-bright.png";
 import logoExploreDark from "../assets/logo-explore-dark.png";
 
-const BrowseRecommendations = () => {
+const BrowseFeed = () => {
   // For development only
   const BACKEND_URL_DB = `${window.location.protocol}//${window.location.hostname}:5001`;
   const BACKEND_URL_API = `${window.location.protocol}//${window.location.hostname}:5002`;
@@ -86,7 +86,6 @@ const BrowseRecommendations = () => {
 
   const toggleTransparency = () => setShowTransparency(!showTransparency);
 
-  const headingText = useBreakpointValue({ base: "Browse Feed", lg: "Browse Recommendations" });
   const articleHeight = useBreakpointValue({ base: "min(200px, 18vh)", md: "225px", lg: "min(250px, 20vh)" });
 
   useEffect(() => {
@@ -327,11 +326,11 @@ const BrowseRecommendations = () => {
       <Box px={{ md: 4 }} py={{ md: 6 }}>
         <Flex direction="column" bg={cardBg} p={8} borderRadius="md" shadow="md">
           <Flex justify="space-between" align="center" mb="4">
-            <Heading fontSize={{ base: "3xl", md: "4xl"}}>{headingText}</Heading>          
+            <Heading fontSize={{ base: "3xl", md: "4xl"}}>Tailored Reads</Heading>          
             <HStack spacing="4" display={{ base: "none", lg: "flex" }}>
               <motion.img
                 src={logo}
-                alt="Detect Logo"
+                alt="Horizon Explore Logo"
                 style={{ height: logoHeight, width: 'auto'}}
                 initial={{ scale: 0.9 }}
                 animate={{ scale: 1 }}
@@ -361,7 +360,7 @@ const BrowseRecommendations = () => {
                 <Box
                   as="img"
                   src={logo}
-                  alt="Detect Logo"
+                  alt="Horizon Explore Logo"
                   maxHeight={logoHeight}
                   maxWidth="120px"
                   objectFit="contain"
@@ -440,7 +439,13 @@ const BrowseRecommendations = () => {
                         transform="rotateY(0deg)"
                         style={{ backfaceVisibility: "hidden" }}
                       >
-                        <Text fontWeight="bold" fontSize={{base: "md", lg: "lg"}} mb="1" textAlign="justify">
+                        <Text
+                          fontWeight="bold" fontSize={{ base: "md", lg: "lg" }} mb="1" textAlign="justify" noOfLines={3}
+                          sx={{
+                            overflowWrap: "break-word",
+                            hyphens: "auto",
+                          }}
+                        >
                           {article.headline}
                         </Text>
                         <Text fontSize="sm" color={textColor2} mb="2">
@@ -477,14 +482,14 @@ const BrowseRecommendations = () => {
                               <Button
                                 leftIcon={<ExternalLinkIcon />}
                                 onClick={() => handleReadMore(article.id, article.url)}
-                                display={{ base: "none", md: "none", lg: "flex" }}
+                                display={{ base: "none", md: "none", lg: "none", xl: "flex" }}
                               >
                                 Read More
                               </Button>
                               <IconButton
                                 icon={<ExternalLinkIcon />}
                                 onClick={() => handleReadMore(article.id, article.url)}
-                                display={{ base: "flex", md: "flex", lg: "none" }}
+                                display={{ base: "flex", md: "flex", lg: "flex", xl: "none" }}
                               />
                             </motion.div>
                           </HStack>
@@ -669,4 +674,4 @@ const BrowseRecommendations = () => {
   );
 };
 
-export default BrowseRecommendations;
+export default BrowseFeed;

@@ -41,7 +41,6 @@ import {
   FaBalanceScale,
   FaCogs,
   FaGlobe,
-  FaUsers,
   FaTrashAlt,
 } from "react-icons/fa";
 import { useNavigate, Routes, Route } from "react-router-dom";
@@ -50,7 +49,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import logoBright from '../assets/logo-bright.png';
 import logoDark from '../assets/logo-dark.png';
 
-import BrowseRecommendations from "./BrowseRecommendations";
+import BrowseFeed from "./BrowseFeed";
 import MyInteractions from "./MyInteractions";
 import DetectionResults from "./DetectionResults";
 import ExposureDiversityReport from "./ExposureDiversityReport";
@@ -58,10 +57,6 @@ import TopSourcesOutlets from "./TopSourcesOutlets";
 import ClaimCheckResults from "./ClaimCheckResults";
 import AccountDetails from "./AccountDetails";
 import NotFound from "../pages/NotFound"; 
-
-import RatingsAndPredictionsPieChart from "../graphs/RatingsAndPredictionsPieChart";
-import DetectionsAndClaimsLineChart from "../graphs/DetectionsAndClaimsLineChart";
-import UsageStatistics from "../graphs/UsageStatistics";
 
 const primaryColorLight = '#c6001e';
 const primaryColorDark = '#cf2640';
@@ -257,10 +252,10 @@ const Profile = () => {
     setOpenDropdown(openDropdown === section ? null : section);
   };
 
-  const [detections, setDetections] = useState([]);
+  const [interactions, setInteractions] = useState([]);
 
   useEffect(() => {
-    const fetchDetections = async () => {
+    const fetchInteractions = async () => {
       const token = localStorage.getItem("token");
       if (!token) {
         navigate("/login");
@@ -268,46 +263,41 @@ const Profile = () => {
       }
 
       try {
-        const response = await fetch(`${BACKEND_URL}/detections`, {
+        const response = await fetch(`${BACKEND_URL}/user/interactions`, {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
 
         if (response.ok) {
-          setDetections(data);
+          setInteractions(data);
         } else {
-          console.error("Failed to fetch detections:", data.error);
+          console.error("Failed to fetch interactions:", data.error);
         }
       } catch (error) {
-        console.error("Error fetching detections:", error);
+        console.error("Error fetching interactions:", error);
       }
     };
 
-    fetchDetections();
+    fetchInteractions();
   }, [navigate]);
-
-  // Add a detection to server
-  const addDetection = (newDetection) => {
-    setDetections((prev) => [...prev, newDetection]);
-  };
-
-  // Delete a detection from server
-  const deleteDetection = async (id) => {
+  
+  // Delete a interaction from server
+  const deleteInteraction = async (id) => {
     const token = localStorage.getItem("token");
     try {
-      const response = await fetch(`${BACKEND_URL}/detections/${id}`, {
+      const response = await fetch(`${BACKEND_URL}/user/interactions/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {
-        setDetections((prev) => prev.filter((d) => d.id !== id));
+        setInteractions((prev) => prev.filter((interaction) => interaction.id !== id));
       } else {
-        console.error("Failed to delete detection.");
+        console.error("Failed to delete interaction.");
       }
     } catch (error) {
-      console.error("Error deleting detection:", error);
+      console.error("Error deleting interaction:", error);
     }
   };
 
@@ -319,39 +309,41 @@ const Profile = () => {
 
   const [sortOrder] = useState("desc");
   
-  const sortedDetections = [...detections].sort((a, b) => {
+  const sortedInteractions = [...interactions].sort((a, b) => {
     return sortOrder === "desc"
-      ? new Date(b.date) - new Date(a.date)
-      : new Date(a.date) - new Date(b.date);
+      ? new Date(b.interaction_timestamp) - new Date(a.interaction_timestamp)
+      : new Date(a.interaction_timestamp) - new Date(b.interaction_timestamp);
   });
-
+  
   const {
-    isOpen: isDetectionModalOpen,
-    onOpen: onDetectionModalOpen,
-    onClose: onDetectionModalClose,
+    isOpen: isInteractionModalOpen,
+    onOpen: onInteractionModalOpen,
+    onClose: onInteractionModalClose,
   } = useDisclosure();
-  const [detectionToDelete, setDetectionToDelete] = useState(null);
+  const [interactionToDelete, setInteractionToDelete] = useState(null);
 
-  const handleDeleteDetection = (detection) => {
-    setDetectionToDelete(detection);
-    onDetectionModalOpen();
+  const handleDeleteInteraction = (interaction) => {
+    setInteractionToDelete(interaction);
+    onInteractionModalOpen();
   };
 
-  const confirmDeleteDetection = async () => {
+  const [selectedInteractions, setSelectedInteractions] = useState([]);
+
+  const confirmDeleteInteraction= async () => {
     try {
-      if (detectionToDelete) {
-        // Delete a single detection
-        await deleteDetection(detectionToDelete.id);
+      if (interactionToDelete) {
+        // Delete a single interaction
+        await deleteInteraction(interactionToDelete.id);
       } else {
-        // Delete selected detections
-        for (const detection of selectedDetections) {
-          await deleteDetection(detection.id);
+        // Delete selected interactions
+        for (const interaction of selectedInteractions) {
+          await deleteInteraction(interaction.id);
         }
-        setSelectedDetections([]);
+        setSelectedInteractions([]);
       }
-      onDetectionModalClose();
+      onInteractionModalClose();
     } catch (error) {
-      console.error("Error deleting detection(s):", error);
+      console.error("Error deleting interaction(s):", error);
     }
   };
 
@@ -585,11 +577,11 @@ const Profile = () => {
                       _active={{ color: activeColor }}
                       color={textColor}
                       width="100%"
-                      onClick={() => navigate("/profile/browse-recommendations")}
+                      onClick={() => navigate("/profile/browse-feed")}
                     >
                       <HStack>
                         <FaCompass />
-                        <Text>Browse Recommendations</Text>
+                        <Text>Browse Your News</Text>
                       </HStack>
                     </Button>
                     <Button
@@ -898,7 +890,6 @@ const Profile = () => {
                         }}                
                       >
                         <Heading size="md" mb="4">Bias & Diversity Metrics</Heading>
-                        <DetectionsAndClaimsLineChart detections={detections} claimChecks={claimChecks} />
                       </Box>
                     </motion.div>
                     <motion.div
@@ -924,7 +915,6 @@ const Profile = () => {
                         }}                
                       >
                         <Heading size="md" mb="4">User Engagement Overview</Heading>
-                        <RatingsAndPredictionsPieChart detections={detections} claimChecks={claimChecks} />
                       </Box>
                     </motion.div>
                     <motion.div
@@ -950,7 +940,6 @@ const Profile = () => {
                         }}               
                       >
                         <Heading size="md" mb="4">Recommendation Effectiveness</Heading>
-                        <UsageStatistics detections={detections} claimChecks={claimChecks} />
                       </Box>
                     </motion.div>
                   </Flex>
@@ -964,97 +953,6 @@ const Profile = () => {
                 >
                   <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Recent Recommendations</Heading>
                     <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">
-                      {detections.length > 0 ? (
-                        <>
-                          <Box overflowX="auto">
-                            <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
-                              <Thead>
-                                <Tr>
-                                  <Th width="10%" textAlign="center"><b>ID</b></Th>
-                                  <Th width="45%" textAlign="left"><b>Title</b></Th>
-                                  <Th width="15%" textAlign="center"><b>Prediction</b></Th>
-                                  <Th width="10%" textAlign="center"><b>Date</b></Th>
-                                  <Th width="10%" textAlign="center"><b>Results</b></Th>
-                                  <Th width="10%" textAlign="center"><b>Remove</b></Th>
-                                </Tr>
-                              </Thead>
-                              <Tbody as={motion.tbody}>
-                                <AnimatePresence>
-                                  {sortedDetections.slice(0, 5).map((detection) => (
-                                    <motion.tr
-                                      key={detection.id}
-                                      layout
-                                      initial={{ opacity: 0, y: 50 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      exit={{ opacity: 0, y: -50 }}
-                                      transition={{ duration: 0.5 }}
-                                    >
-                                      <Td textAlign="center">#{detection.id}</Td>
-                                      <Td textAlign="justify">{detection.title}</Td>
-                                      <Td textAlign="center">
-                                        <Badge
-                                          colorScheme={getPredictionColor(detection.final_prediction)}
-                                          fontSize="md"
-                                          p={2}
-                                          display="flex"
-                                          alignItems="center"
-                                          justifyContent="center"
-                                          gap="2"
-                                          whiteSpace="normal"
-                                        >
-                                          {getPredictionIcon(detection.final_prediction)}
-                                          <Text as="span" fontSize="md">
-                                            {detection.final_prediction}
-                                          </Text>
-                                        </Badge>
-                                      </Td>
-                                      <Td textAlign="center">{formatDate(detection.date)}</Td>
-                                      <Td textAlign="center">
-                                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                          <Button
-                                            size="sm"
-                                            onClick={() =>
-                                              navigate(`/profile/detection-results/${detection.id}`, {
-                                                state: { detection },
-                                              })
-                                            }
-                                          >
-                                            Results
-                                          </Button>
-                                        </motion.div>
-                                      </Td>
-                                      <Td textAlign="center">
-                                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                          <Button size="sm" color={primaryColor} onClick={() => handleDeleteDetection(detection)}>
-                                            <FaTrashAlt />
-                                          </Button>
-                                        </motion.div>
-                                      </Td>
-                                    </motion.tr>
-                                  ))}
-                                </AnimatePresence>
-                              </Tbody>
-                            </Table>
-                          </Box>
-                        </>
-                      ) : (
-                        <motion.div
-                          initial={{ opacity: 0, y: 15 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 15 }}
-                          transition={{ duration: 0.5 }}
-                        >
-                          <Flex align="center" justify="center" direction="column" h="15vh">
-                            <WarningIcon boxSize="6" color="gray.500" mb="2" />
-                            <Text fontSize="lg" color="gray.500" textAlign="center">
-                              No recommendations found.
-                            </Text>
-                            <Text fontSize="md" color="gray.400" textAlign="center">
-                              Start exploring news articles tailored to your interests with Horizon Explore while ensuring a diverse and balanced perspective in your recommendations.
-                            </Text>
-                          </Flex>
-                        </motion.div>
-                      )}
                     </Box>
                 </motion.div>
 
@@ -1162,15 +1060,15 @@ const Profile = () => {
             }
           />
           <Route
-            path="/browse-recommendations"
-            element={<BrowseRecommendations addDetection={addDetection}/>}
+            path="/browse-feed"
+            element={<BrowseFeed/>}
             />
           <Route
             path="/my-interactions"
             element={
               <MyInteractions
-                detections={detections}
-                deleteDetection={deleteDetection}
+                interactions={interactions}
+                deleteInteraction={deleteInteraction}
               />
             }
           />
@@ -1200,8 +1098,8 @@ const Profile = () => {
           />
         </Routes>
 
-        {/* Detections Confirmation Modal */}
-        <Modal isOpen={isDetectionModalOpen} onClose={onDetectionModalClose} isCentered>
+        {/* Interactions Confirmation Modal */}
+        <Modal isOpen={isInteractionModalOpen} onClose={onInteractionModalClose} isCentered>
           <ModalOverlay />
             <ModalContent
               width={{ base: "90%"}}
@@ -1209,18 +1107,18 @@ const Profile = () => {
             <ModalHeader>Confirm Deletion</ModalHeader>
             <ModalCloseButton />
             <ModalBody>
-              {detectionToDelete
-                ? "Are you sure you want to delete this detection?"
-                : "Are you sure you want to delete the selected detections?"}
+              {interactionToDelete
+                ? "Are you sure you want to delete this interaction?"
+                : "Are you sure you want to delete the selected interactions?"}
             </ModalBody>
             <ModalFooter>
               <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                <Button colorScheme="blue" mr={3} onClick={confirmDeleteDetection}>
+                <Button colorScheme="blue" mr={3} onClick={confirmDeleteInteraction}>
                   Delete
                 </Button>
               </motion.div>
               <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                <Button onClick={onDetectionModalClose}>
+                <Button onClick={onInteractionModalClose}>
                   Cancel
                 </Button>
               </motion.div>

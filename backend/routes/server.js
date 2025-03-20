@@ -237,6 +237,79 @@ app.post("/user/interactions", verifyToken, (req, res) => {
   });
 });
 
+// Fetch user interactions along with recommendations
+app.get("/user/interactions", verifyToken, (req, res) => {
+  const query = `
+    SELECT * FROM user_interactions 
+    WHERE user_id = ? 
+    ORDER BY interaction_timestamp DESC;
+  `;
+
+  db.all(query, [req.user.id], (err, interactions) => {
+    if (err) return res.status(500).json({ error: "Failed to fetch interactions" });
+
+    // Fetch recommendations separately and merge them into the response
+    const recommendationsQuery = `
+      SELECT * FROM user_recommendations 
+      WHERE user_id = ?
+      ORDER BY date_publish DESC;
+    `;
+
+    db.all(recommendationsQuery, [req.user.id], (err, recommendations) => {
+      if (err) return res.status(500).json({ error: "Failed to fetch recommendations" });
+
+      // Group recommendations by interaction type
+      const interactionsWithRecommendations = interactions.map((interaction) => {
+        const matchingRecommendations = recommendations.filter(
+          (rec) => rec.source_article_headline === interaction.news_id
+        );
+
+        return {
+          ...interaction,
+          recommendations: {
+            like: matchingRecommendations.filter((rec) => rec.political_leaning === "like"),
+            dislike: matchingRecommendations.filter((rec) => rec.political_leaning === "dislike"),
+            read_more: matchingRecommendations.filter((rec) => rec.political_leaning === "read_more"),
+          },
+        };
+      });
+
+      res.json(interactionsWithRecommendations);
+    });
+  });
+});
+
+const resetInteractionsSequence = () => {
+  const query = `
+    UPDATE sqlite_sequence
+    SET seq = (SELECT MAX(id) FROM user_interactions)
+    WHERE name = 'user_interactions';
+  `;
+
+  db.run(query, (err) => {
+    if (err) {
+      console.error("Failed to reset user interactions sequence:", err.message);
+    } else {
+      console.log("Sequence reset successfully for user interactions.");
+    }
+  });
+};
+
+// Delete user interaction
+app.delete("/user/interactions/:id", verifyToken, (req, res) => {
+  const { id } = req.params;
+
+  const query = "DELETE FROM user_interactions WHERE id = ? AND user_id = ?";
+  db.run(query, [id, req.user.id], function (err) {
+    if (err) return res.status(500).json({ error: "Failed to delete interaction" });
+    if (this.changes === 0)
+      return res.status(404).json({ error: "Interaction not found or not authorized" });
+
+    resetInteractionsSequence(); // Reset sequence after deletion
+    res.status(204).send();
+  });
+});
+
 // Fetch 10 random articles if the user is new
 app.get("/articles/random", verifyToken, (req, res) => {
   const userQuery = `SELECT political_leaning FROM users WHERE id = ?`;
@@ -308,129 +381,6 @@ app.get("/articles/recommended", verifyToken, (req, res) => {
   db.all(query, [req.user.id], (err, rows) => {
     if (err) return res.status(500).json({ error: "Failed to fetch recommendations" });
     res.json(rows);
-  });
-});
-
-// Get detection by ID
-app.get("/detections/:id", verifyToken, (req, res) => {
-  const { id } = req.params;
-
-  const query = "SELECT * FROM detections WHERE id = ? AND user_id = ?";
-  db.get(query, [id, req.user.id], (err, row) => {
-    if (err) return res.status(500).json({ error: "Failed to fetch detection" });
-
-    if (!row) {
-      return res.status(404).json({ error: "Detection not found" });
-    }
-
-    // Parse JSON fields before sending the response
-    const parsedRow = {
-      ...row,
-      models: JSON.parse(row.models),
-      true_probabilities: JSON.parse(row.true_probabilities),
-      fake_probabilities: JSON.parse(row.fake_probabilities),
-      predictions: JSON.parse(row.predictions),
-    };
-
-    res.json(parsedRow);
-  });
-});
-
-// Generate FactGuard Detect ID
-const generateDetectionsID = () => {
-  const randomNumber = Math.floor(Math.random() * 100);
-  const formattedNumber = String(randomNumber).padStart(2, '0');
-  return `FGD${formattedNumber}`;
-};
-
-// Add a new detection
-app.post("/detections", verifyToken, (req, res) => {
-  const { title, content, models, confidence, true_probabilities, fake_probabilities, predictions, final_prediction, date } = req.body;
-
-  if (!title || !content || !models || !confidence || !true_probabilities || !fake_probabilities || !predictions || !final_prediction || !date) {
-    return res.status(400).json({ error: "All fields are required" });
-  }
-
-  const customID = generateDetectionsID();
-
-  const insertQuery = `
-    INSERT INTO detections (id, user_id, title, content, models, confidence, true_probabilities, fake_probabilities, predictions, final_prediction, date)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  const checkQuery = "SELECT 1 FROM detections WHERE user_id = ? AND title = ? AND content = ?";
-
-  db.get(checkQuery, [req.user.id, title, content], (err, row) => {
-    if (err) return res.status(500).json({ error: "Database error" });
-
-    if (row) {
-      return res.status(409).json({ error: "Duplicate detection. Already exists." });
-    }
-
-    db.run(
-      insertQuery,
-      [
-        customID, 
-        req.user.id, 
-        title, 
-        content, 
-        JSON.stringify(models),
-        confidence,
-        JSON.stringify(true_probabilities), 
-        JSON.stringify(fake_probabilities), 
-        JSON.stringify(predictions), 
-        final_prediction, 
-        date,
-      ],
-      function (err) {
-        if (err) return res.status(500).json({ error: "Failed to add detection" });
-
-        res.status(201).json({
-          id: customID,
-          user_id: req.user.id,
-          title,
-          content,
-          models,
-          confidence,
-          true_probabilities,
-          fake_probabilities,
-          predictions,
-          final_prediction,
-          date,
-        });
-      }
-    );
-  });
-});
-
-const resetDetectionsSequence = () => {
-  const query = `
-    UPDATE sqlite_sequence
-    SET seq = (SELECT MAX(id) FROM detections)
-    WHERE name = 'detections';
-  `;
-
-  db.run(query, (err) => {
-    if (err) {
-      console.error("Failed to reset detections sequence:", err.message);
-    } else {
-      console.log("Sequence reset successfully for detections.");
-    }
-  });
-};
-
-// Delete a detection
-app.delete("/detections/:id", verifyToken, (req, res) => {
-  const { id } = req.params;
-
-  const query = "DELETE FROM detections WHERE id = ? AND user_id = ?";
-  db.run(query, [id, req.user.id], function (err) {
-    if (err) return res.status(500).json({ error: "Failed to delete detection" });
-    if (this.changes === 0)
-      return res.status(404).json({ error: "Detection not found or not authorized" });
-
-    resetDetectionsSequence(); // Reset sequence after deletion
-    res.status(204).send();
   });
 });
 
