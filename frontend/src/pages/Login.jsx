@@ -136,7 +136,7 @@ const Login = () => {
           }, 3000);
         } else if (data.error === "Invalid credentials") {
           setPasswordValid(false);
-          setPasswordAlert("The email or password you entered is incorrect. Please try again.");
+          setPasswordAlert("The password you entered is incorrect. Please try again.");
           setTimeout(() => setAlert(null), 3000);
         }
       }

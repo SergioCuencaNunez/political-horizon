@@ -32,19 +32,16 @@ import { SunIcon, MoonIcon, ChevronDownIcon, ChevronUpIcon, WarningIcon, Warning
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
-const primaryColorLight = '#c6001e';
-const primaryColorDark = '#cf2640';
+const primaryColor = "#4dcfaf";
 
-import logoExploreBright from "../assets/logo-explore-bright.png";
-import logoExploreDark from "../assets/logo-explore-dark.png";
+import logoDetectBright from "../assets/logo-detect-bright.png";
+import logoDetectDark from "../assets/logo-detect-dark.png";
 
-const MyInteractions = ({ detections, deleteDetection }) => {
+const MyNewsDetections = ({ detections, deleteDetection }) => {
   const navigate = useNavigate();
 
-  const logo = useColorModeValue(logoExploreBright, logoExploreDark);
-  const logoHeight = useBreakpointValue({ base: '28px', md: '33px' });
-
-  const primaryColor = useColorModeValue(primaryColorLight, primaryColorDark);
+  const logo = useColorModeValue(logoDetectBright, logoDetectDark);
+  const logoHeight = useBreakpointValue({ base: '40px', md: '45px' });
   const cardBg = useColorModeValue("white", "gray.700");
   
   const { colorMode, toggleColorMode } = useColorMode();
@@ -97,6 +94,11 @@ const MyInteractions = ({ detections, deleteDetection }) => {
     const options = { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" };
     return date.toLocaleDateString("en-GB", options).replace(",", "");
   };
+
+  const green = useColorModeValue("green.600", "green.300");
+  const orange = useColorModeValue("orange.600", "orange.300");
+  const gray = useColorModeValue("gray.600", "gray.300");
+  const red = useColorModeValue("red.600", "red.300");
   
   const sortedDetections = [...detections].sort((a, b) => {
     return sortOrder === "desc"
@@ -108,17 +110,17 @@ const MyInteractions = ({ detections, deleteDetection }) => {
     setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
   };
 
-    const getPredictionColor = (prediction) => {
-      if (prediction === "Fake") return "red";
-      if (prediction === "True") return "green";
-      return "orange";
-    };
-    
-    const getPredictionIcon = (prediction) => {
-      if (prediction === "Fake") return <WarningTwoIcon color="red.500" />;
-      if (prediction === "True") return <CheckCircleIcon color="green.500" />;
-      return <WarningIcon color="orange.500" />;
-    };
+  const getPredictionColor = (prediction) => {
+    if (prediction === "Fake") return "red";
+    if (prediction === "True") return "green";
+    return "orange";
+  };
+  
+  const getPredictionIcon = (prediction) => {
+    if (prediction === "Fake") return <WarningTwoIcon color="red.500" />;
+    if (prediction === "True") return <CheckCircleIcon color="green.500" />;
+    return <WarningIcon color="orange.500" />;
+  };
 
   return (
     <motion.div
@@ -130,11 +132,11 @@ const MyInteractions = ({ detections, deleteDetection }) => {
       <Box px={{ md: 4 }} py={{ md: 6 }}>
         <Flex direction="column" bg={cardBg} p={8} borderRadius="md" shadow="md">
           <Flex justify="space-between" align="center" mb="4">
-            <Heading fontSize={{ base: '3xl', md: '4xl' }}>My Interactions</Heading>                    
+            <Heading fontSize={{ base: '3xl', md: '4xl' }}>My News Detections</Heading>                    
             <HStack spacing="4" display={{ base: "none", md: "none", lg: "flex" }}>
                <motion.img
                   src={logo}
-                  alt="Horizon Explore Logo"
+                  alt="Detect Logo"
                   style={{ height: logoHeight, width: 'auto'}}
                   initial={{ scale: 0.9 }}
                   animate={{ scale: 1 }}
@@ -164,7 +166,7 @@ const MyInteractions = ({ detections, deleteDetection }) => {
                 <Box
                   as="img"
                   src={logo}
-                  alt="Horizon Explore Logo"
+                  alt="Detect Logo"
                   maxHeight={logoHeight}
                   maxWidth="120px"
                   objectFit="contain"
@@ -309,10 +311,10 @@ const MyInteractions = ({ detections, deleteDetection }) => {
               <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "15vh" }}>
                 <WarningIcon boxSize="6" color="gray.500" mb="2" />
                 <Text fontSize="lg" color="gray.500" textAlign="center">
-                  No interactions found.
+                  No detections found.
                 </Text>
                 <Text fontSize="md" color="gray.400" textAlign="center">
-                  Start receiving diverse news recommendations with Horizon Explore, ensuring balanced perspectives and reducing bias in your daily news consumption.
+                  Start detecting fake news with FactGuard Detect by analyzing articles and preventing misinformation today.
                 </Text>
               </Flex>
             </motion.div>
@@ -328,17 +330,19 @@ const MyInteractions = ({ detections, deleteDetection }) => {
               <ModalCloseButton />
               <ModalBody>
                 {detectionToDelete
-                  ? "Are you sure you want to delete this interaction?"
-                  : "Are you sure you want to delete the selected interactions?"}
+                  ? "Are you sure you want to delete this detection?"
+                  : "Are you sure you want to delete the selected detections?"}
               </ModalBody>
               <ModalFooter>
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                  <Button colorScheme="blue" mr={3} onClick={confirmDelete}>
+                  <Button colorScheme="red" mr={3} onClick={confirmDelete}>
                     Delete
                   </Button>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                  <Button onClick={onClose}>Cancel</Button>
+                  <Button onClick={onClose}>
+                    Cancel
+                  </Button>
                 </motion.div>
               </ModalFooter>
             </ModalContent>
@@ -349,4 +353,4 @@ const MyInteractions = ({ detections, deleteDetection }) => {
   );
 };
 
-export default MyInteractions;
+export default MyNewsDetections;

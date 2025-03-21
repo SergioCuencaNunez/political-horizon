@@ -237,7 +237,7 @@ app.post("/user/interactions", verifyToken, (req, res) => {
   });
 });
 
-// Fetch user interactions along with recommendations
+// Fetch user interactions along with recommendations and interacted news details
 app.get("/user/interactions", verifyToken, (req, res) => {
   const interactionsQuery = `
     SELECT * FROM user_interactions 
@@ -250,40 +250,96 @@ app.get("/user/interactions", verifyToken, (req, res) => {
 
     if (interactions.length === 0) return res.json([]); // No interactions
 
-    // Fetch recommendations only for "like" or "read more (120s+)" interactions
-    const interactionIds = interactions
-      .filter((interaction) => 
-        interaction.interaction_type === "like" || interaction.read_time_seconds >= 120
-      )
-      .map((interaction) => interaction.id);
+    // Collect all interaction news IDs
+    const interactionNewsIds = interactions.map((interaction) => interaction.id);
 
-    if (interactionIds.length === 0) {
-      return res.json(interactions.map((interaction) => ({ ...interaction, recommendations: [] })));
-    }
-
-    const recommendationsQuery = `
-      SELECT * FROM user_recommendations
-      WHERE user_id = ? 
-      AND source_article_id IN (${interactionIds.map(() => "?").join(",")})
-      ORDER BY date_publish DESC
-      LIMIT 5;
+    // Fetch headlines and URLs for interacted news
+    const newsQuery = `
+      SELECT id, headline, outlet, url 
+      FROM news_articles 
+      WHERE id IN (${interactionNewsIds.map(() => "?").join(",")});
     `;
 
-    db.all(recommendationsQuery, [req.user.id, ...interactionIds], (err, recommendations) => {
-      if (err) return res.status(500).json({ error: "Failed to fetch recommendations" });
+    db.all(newsQuery, interactionNewsIds, (err, newsData) => {
+      if (err) return res.status(500).json({ error: "Failed to fetch interacted news details" });
 
-      // Attach recommendations to the corresponding interaction
-      const interactionsWithRecommendations = interactions.map((interaction) => {
-        if (interaction.interaction_type === "like" || interaction.read_time_seconds >= 120) {
-          return {
-            ...interaction,
-            recommendations: recommendations.filter((rec) => rec.source_article_id === interaction.id).slice(0, 5),
-          };
-        }
-        return { ...interaction, recommendations: [] }; // No recommendations for dislikes
+      // Map news data for easy lookup
+      const newsMap = {};
+      newsData.forEach((news) => {
+        newsMap[news.id] = { headline: news.headline, outlet: news.outlet, url: news.url };
       });
 
-      res.json(interactionsWithRecommendations);
+      // Separate IDs for different interaction types
+      const positiveInteractionIds = interactions
+        .filter((interaction) => 
+          interaction.interaction_type === "like" || interaction.read_time_seconds >= 120
+        )
+        .map((interaction) => interaction.id);
+
+      const negativeInteractionIds = interactions
+        .filter((interaction) => interaction.interaction_type === "dislike")
+        .map((interaction) => interaction.id);
+
+      if (positiveInteractionIds.length === 0 && negativeInteractionIds.length === 0) {
+        return res.json(
+          interactions.map((interaction) => ({
+            ...interaction,
+            headline: newsMap[interaction.id]?.headline || "Unknown Article",
+            outlet: newsMap[interaction.id]?.outlet || "Unknown Outlet",
+            url: newsMap[interaction.id]?.url || "#",
+            recommendations: [],
+          }))
+        );
+      }
+
+      // Fetch positive recommendations (like/read more)
+      const positiveQuery = `
+        SELECT * FROM user_recommendations
+        WHERE user_id = ? 
+        AND source_article_id IN (${positiveInteractionIds.map(() => "?").join(",")})
+        ORDER BY source_article_id, date_publish DESC;
+      `;
+
+      // Fetch negative recommendations (dislike)
+      const negativeQuery = `
+        SELECT * FROM user_recommendations
+        WHERE user_id = ? 
+        AND source_article_id IN (${negativeInteractionIds.map(() => "?").join(",")})
+        ORDER BY source_article_id, date_publish DESC;
+      `;
+
+      db.all(positiveQuery, [req.user.id, ...positiveInteractionIds], (err, positiveRecommendations) => {
+        if (err) return res.status(500).json({ error: "Failed to fetch recommendations" });
+
+        db.all(negativeQuery, [req.user.id, ...negativeInteractionIds], (err, negativeRecommendations) => {
+          if (err) return res.status(500).json({ error: "Failed to fetch negative recommendations" });
+
+          // Attach recommendations and interacted news to each interaction
+          const interactionsWithDetails = interactions.map((interaction) => {
+            let matchingRecommendations = [];
+            
+            if (interaction.interaction_type === "like" || interaction.read_time_seconds >= 120) {
+              matchingRecommendations = positiveRecommendations
+                .filter((rec) => rec.source_article_id === interaction.id)
+                .slice(0, 5); // Max 5 recommended news
+            } else if (interaction.interaction_type === "dislike") {
+              matchingRecommendations = negativeRecommendations
+                .filter((rec) => rec.source_article_id === interaction.id)
+                .slice(0, 5); // Max 5 "not relevant" news
+            }
+
+            return {
+              ...interaction,
+              headline: newsMap[interaction.id]?.headline || "Unknown Article",
+              outlet: newsMap[interaction.id]?.outlet || "Unknown Outlet",
+              url: newsMap[interaction.id]?.url || "#",
+              recommendations: matchingRecommendations,
+            };
+          });
+
+          res.json(interactionsWithDetails);
+        });
+      });
     });
   });
 });

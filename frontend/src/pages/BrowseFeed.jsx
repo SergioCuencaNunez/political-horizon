@@ -5,6 +5,7 @@ import {
   Flex,
   Heading,
   Text,
+  Tooltip,
   Button,
   Input,
   Select,
@@ -27,6 +28,7 @@ import {
 } from "@chakra-ui/react";
 import { SunIcon, MoonIcon, InfoOutlineIcon, ExternalLinkIcon, RepeatIcon } from "@chakra-ui/icons";
 import { FaThumbsUp, FaThumbsDown } from "react-icons/fa6";
+import { GiBigWave, GiCapitol, GiScales } from "react-icons/gi";
 import { motion } from "framer-motion";
 import { debounce } from "lodash";
 
@@ -68,6 +70,7 @@ const BrowseFeed = () => {
   const hasFetched = useRef(false);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [interactions, setInteractions] = useState({});
   const [interactionsCount, setInteractionsCount] = useState(0);
 
   const [userStatus, setUserStatus] = useState(null);
@@ -78,6 +81,9 @@ const BrowseFeed = () => {
   const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
   const [animationKey, setAnimationKey] = useState(0);
   
+  const tooltipBg = useColorModeValue("gray.50", "gray.900");
+  const tooltipColor = useColorModeValue("black", "white");
+
   const [showTransparency, setShowTransparency] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const { isOpen: isSpinnerOpen, onOpen: onSpinnerOpen, onClose: onSpinnerClose } = useDisclosure();
@@ -216,7 +222,7 @@ const BrowseFeed = () => {
       const response = await fetch(`${BACKEND_URL_DB}/articles/recommended`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      if (!response.ok) throw new Error("Failed to fetch recommendations");
+      if (!response.ok) throw new Error("Failed to fetch recommendations.");
       const data = await response.json();
       setArticles([]);
       setArticles(data);
@@ -227,25 +233,69 @@ const BrowseFeed = () => {
     }
   };
 
-  const handleInteraction = async (id, interaction_type, read_time_seconds = 0) => {
+  const handleInteraction = async (id, newInteractionType, read_time_seconds = 0) => {
     try {
-      const response = await fetch(`${BACKEND_URL_DB}/user/interactions`, {
+      const prevInteraction = interactions[id];
+      const token = localStorage.getItem("token");
+  
+      // 1. Toggle off (same interaction clicked again)
+      if (prevInteraction === newInteractionType) {
+        // DELETE interaction
+        await fetch(`${BACKEND_URL_DB}/user/interactions/${id}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+  
+        // Update state
+        setInteractions((prev) => ({
+          ...prev,
+          [id]: null,
+        }));
+  
+        setInteractionsCount((prev) => prev - 1);
+        return;
+      }
+  
+      // 2. Remove previous (if exists and is different)
+      if (prevInteraction && prevInteraction !== newInteractionType) {
+        await fetch(`${BACKEND_URL_DB}/user/interactions/${id}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+  
+      // 3. POST new interaction
+      await fetch(`${BACKEND_URL_DB}/user/interactions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ id, interaction_type, read_time_seconds }),
+        body: JSON.stringify({
+          id,
+          interaction_type: newInteractionType,
+          read_time_seconds,
+        }),
       });
   
-      if (!response.ok) throw new Error("Failed to store interaction");
+      // Update state
+      setInteractions((prev) => ({
+        ...prev,
+        [id]: newInteractionType,
+      }));
   
-      setInteractionsCount((prev) => prev + 1);
-
+      if (!prevInteraction) {
+        setInteractionsCount((prev) => prev + 1);
+      }
+  
     } catch (error) {
       setErrorMessage(`Error storing interaction: ${error}`);
     }
-  };
+  };   
 
   const handleReadMore = (news_id, url) => {
     localStorage.setItem("read_start_time", Date.now());
@@ -314,6 +364,20 @@ const BrowseFeed = () => {
     }));
   };
   
+const getPoliticalIcon = (leaning) => {
+  const iconSize = 15
+  switch (leaning) {
+    case "RIGHT":
+      return <GiCapitol size={iconSize}/>;
+    case "LEFT":
+      return <GiBigWave size={iconSize}/>;
+    case "CENTER":
+      return <GiScales size={iconSize}/>;
+    default:
+      return null;
+  }
+};
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
@@ -368,11 +432,11 @@ const BrowseFeed = () => {
           </Flex>
           <Box borderBottom="1px" borderColor="gray.300" mb="4"></Box>
           <Text mb="4" textAlign="justify">
-              {useBreakpointValue({
-                base: "Your recommendations are personalized based on your reading history while ensuring a diverse and balanced perspective, helping you explore different viewpoints.",
-                lg: "Your recommendations are personalized based on your reading history while ensuring a diverse and balanced perspective, helping you explore different viewpoints and stay informed with a well-rounded news feed.",
-              })}
-            </Text>
+            {useBreakpointValue({
+              base: "Your recommendations are personalized based on your reading history while ensuring a diverse and balanced perspective, helping you explore different viewpoints.",
+              lg: "Your recommendations are personalized based on your reading history while ensuring a diverse and balanced perspective, helping you explore different viewpoints and stay informed with a well-rounded news feed.",
+            })}
+          </Text>
           {userStatus === "new" && <Text mb="4" fontSize="sm" color="gray.500">These are your first 10 articles to help us tune your interests.</Text>}
           <Flex gap="4" mb="6">
             <Input placeholder="Search news..." value={filters.search} onChange={(e) => updateFilters({ search: e.target.value })} />
@@ -412,7 +476,7 @@ const BrowseFeed = () => {
                     scale: { type: "spring", stiffness: 300, damping: 20 },
                   }}
                 >
-                  <Box position="relative" minHeight="200px" perspective="1000px">
+                  <Box position="relative" minHeight="220px" perspective="1000px">
                     <motion.div
                       style={{
                         width: "100%",
@@ -430,7 +494,7 @@ const BrowseFeed = () => {
                         shadow="md"
                         direction="column"
                         justify="center"
-                        minHeight="200px"
+                        minHeight="220px"
                         height="100%"
                         bg={modelCardBg}
                         position="absolute"
@@ -461,40 +525,101 @@ const BrowseFeed = () => {
                               ? "blue"
                               : "yellow"
                           }
-                          width="fit-content"
                           mb="4"
+                          p={1}
+                          display="flex"
+                          width="fit-content"
+                          alignItems="center"
+                          justifyContent="center"
+                          gap="2"
+                          whiteSpace="normal"
                         >
-                          {article.political_leaning}
+                          {getPoliticalIcon(article.political_leaning)}
+                          <Text as="span" fontSize="sm" fontWeight="bold">
+                            {article.political_leaning}
+                          </Text>
                         </Badge>
                         <HStack spacing="2" justify="space-between" width="100%" flexWrap="wrap">
-                          <HStack spacing="2">
-                            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                              <IconButton
-                                icon={<FaThumbsUp />}
-                                onClick={() => handleInteraction(article.id, "like")}
-                              />
-                            </motion.div>
-                            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                              <IconButton
-                                icon={<FaThumbsDown />}
-                                onClick={() => handleInteraction(article.id, "dislike")}
-                              />
-                            </motion.div>
-                            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                              <Button
-                                leftIcon={<ExternalLinkIcon />}
-                                onClick={() => handleReadMore(article.id, article.url)}
-                                display={{ base: "none", md: "none", lg: "none", xl: "flex" }}
+                          {userStatus === "new" ? (
+                            <Tooltip
+                                label="Only one interaction can be saved per article, the most recent one will be kept."
+                                fontSize="xs"
+                                textAlign="justify"
+                                bg={tooltipBg}
+                                color={tooltipColor}
+                                placement="top"
+                                px={3}
+                                py={2}
+                                borderRadius="md"
+                                shadow="md"
                               >
-                                Read More
-                              </Button>
-                              <IconButton
-                                icon={<ExternalLinkIcon />}
-                                onClick={() => handleReadMore(article.id, article.url)}
-                                display={{ base: "flex", md: "flex", lg: "flex", xl: "none" }}
-                              />
-                            </motion.div>
-                          </HStack>
+                              <HStack spacing="2">
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                  <IconButton
+                                    icon={<FaThumbsUp />}
+                                    onClick={() => handleInteraction(article.id, "like")}
+                                    colorScheme={interactions[article.id] === "like" ? "green" : "gray"}
+                                  />
+                                </motion.div>
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                  <IconButton
+                                    icon={<FaThumbsDown />}
+                                    onClick={() => handleInteraction(article.id, "dislike")}
+                                    colorScheme={interactions[article.id] === "dislike" ? "red" : "gray"}
+                                  />
+                                </motion.div>
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                  <Button
+                                    leftIcon={<ExternalLinkIcon />}
+                                    onClick={() => handleReadMore(article.id, article.url)}
+                                    display={{ base: "none", md: "none", lg: "none", xl: "flex" }}
+                                    colorScheme={interactions[article.id] === "read" ? "blue" : "gray"}
+                                  >
+                                    Read More
+                                  </Button>
+                                  <IconButton
+                                    icon={<ExternalLinkIcon />}
+                                    onClick={() => handleReadMore(article.id, article.url)}
+                                    display={{ base: "flex", md: "flex", lg: "flex", xl: "none" }}
+                                    colorScheme={interactions[article.id] === "read" ? "blue" : "gray"}
+                                  />
+                                </motion.div>
+                              </HStack>
+                            </Tooltip>
+                          ) : (
+                            <HStack spacing="2">
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                  <IconButton
+                                    icon={<FaThumbsUp />}
+                                    onClick={() => handleInteraction(article.id, "like")}
+                                    colorScheme={interactions[article.id] === "like" ? "green" : "gray"}
+                                  />
+                                </motion.div>
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                  <IconButton
+                                    icon={<FaThumbsDown />}
+                                    onClick={() => handleInteraction(article.id, "dislike")}
+                                    colorScheme={interactions[article.id] === "dislike" ? "red" : "gray"}
+                                  />
+                                </motion.div>
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                  <Button
+                                    leftIcon={<ExternalLinkIcon />}
+                                    onClick={() => handleReadMore(article.id, article.url)}
+                                    display={{ base: "none", md: "none", lg: "none", xl: "flex" }}
+                                    colorScheme={interactions[article.id] === "read" ? "blue" : "gray"}
+                                  >
+                                    Read More
+                                  </Button>
+                                  <IconButton
+                                    icon={<ExternalLinkIcon />}
+                                    onClick={() => handleReadMore(article.id, article.url)}
+                                    display={{ base: "flex", md: "flex", lg: "flex", xl: "none" }}
+                                    colorScheme={interactions[article.id] === "read" ? "blue" : "gray"}
+                                  />
+                                </motion.div>
+                              </HStack>
+                          )}
                           {userStatus === "returning" && article.source_article_headline && (
                             <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                               <IconButton
@@ -513,7 +638,7 @@ const BrowseFeed = () => {
                         direction="column"
                         justify="center"
                         textAlign="center"
-                        minHeight="200px"
+                        minHeight="220px"
                         height="100%"
                         bg={modelCardBg}
                         position="absolute"
@@ -522,10 +647,10 @@ const BrowseFeed = () => {
                         style={{ backfaceVisibility: "hidden" }}
                       >
                         <Text fontWeight="bold" fontSize={{base: "md", lg: "lg"}} mb="1">Why This Article?</Text>
-                        <Text fontSize={{base: "xs", lg:"sm"}} color={textColor2} mb="1">
+                        <Text fontSize={{base: "xs", lg:"sm"}} color={textColor2} mb="2">
                           This article was recommended based on your interest in:
                         </Text>
-                        <Text fontSize={{base: "sm", lg:"md"}} fontWeight="bold" mb="3">"{article.source_article_headline}"</Text>
+                        <Text fontSize={{base: "sm", lg:"md"}} fontWeight="bold" mb="4">"{article.source_article_headline}"</Text>
                         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                           <IconButton
                             icon={<RepeatIcon />}
