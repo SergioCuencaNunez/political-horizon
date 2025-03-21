@@ -52,8 +52,8 @@ import logoDark from '../assets/logo-dark.png';
 import BrowseFeed from "./BrowseFeed";
 import MyInteractions from "./MyInteractions";
 import DetectionResults from "./DetectionResults";
-import ExposureDiversityReport from "./ExposureDiversityReport";
-import TopSourcesOutlets from "./TopSourcesOutlets";
+import BalanceReport from "./BalanceReport";
+import TopNewsOutlets from "./TopNewsOutlets";
 import ClaimCheckResults from "./ClaimCheckResults";
 import AccountDetails from "./AccountDetails";
 import NotFound from "../pages/NotFound"; 
@@ -645,11 +645,11 @@ const Profile = () => {
                       _active={{ color: activeColor }}
                       color={textColor}
                       width="100%"
-                      onClick={() => navigate("/profile/exposure-diversity-report")}
+                      onClick={() => navigate("/profile/balance-report")}
                     >
                       <HStack>
                         <FaBalanceScale />
-                        <Text>Exposure and Diversity Report</Text>
+                        <Text>Balance Report</Text>
                       </HStack>
                     </Button>
                     <Button
@@ -660,11 +660,11 @@ const Profile = () => {
                       _active={{ color: activeColor }}
                       color={textColor}
                       width="100%"
-                      onClick={() => navigate("/profile/top-source-outlets")}
+                      onClick={() => navigate("/profile/top-news-outlets")}
                     >
                       <HStack>
                         <FaGlobe />
-                        <Text>Top Sources & Outlets</Text>
+                        <Text>Top News Outlets</Text>
                       </HStack>
                     </Button>
                   </VStack>
@@ -1074,13 +1074,13 @@ const Profile = () => {
           />
           <Route path="/detection-results/:id" element={<DetectionResults />} />
           <Route
-            path="/exposure-diversity-report"
-            element={<ExposureDiversityReport addClaimCheck={addClaimCheck}/>}
+            path="/balance-report"
+            element={<BalanceReport addClaimCheck={addClaimCheck}/>}
             />
           <Route
-            path="/top-source-outlets"
+            path="/top-news-outlets"
             element={
-              <TopSourcesOutlets
+              <TopNewsOutlets
                 claimChecks={claimChecks}
                 deleteClaimCheck={deleteClaimCheck}
               />

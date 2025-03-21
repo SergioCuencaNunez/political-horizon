@@ -45,7 +45,6 @@ def generate_recommendations():
     if not user_id:
         return jsonify({"error": "User ID missing in token"}), 403
 
-    # Connect to SQLite Database
     conn = sqlite3.connect("backend/db/database.db")
     cursor = conn.cursor()
 
@@ -53,8 +52,6 @@ def generate_recommendations():
         # Get the last recommendation request timestamp
         cursor.execute("SELECT last_recommendation_timestamp FROM users WHERE id = ?", (user_id,))
         last_recommendation_time = cursor.fetchone()
-
-        # If no previous recommendations, default to 24 hours ago
         last_recommendation_time = last_recommendation_time[0] if last_recommendation_time and last_recommendation_time[0] else \
             (datetime.now(timezone.utc) - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
 
@@ -66,33 +63,18 @@ def generate_recommendations():
         """, (user_id, last_recommendation_time))
 
         interactions = cursor.fetchall()
-
-        # Separate interactions by type
-        liked_articles = set()
-        read_articles = set()
-        disliked_articles = set()
-
-        for id, interaction_type, read_time_seconds in interactions:
-            if interaction_type == "like":
-                liked_articles.add(id)
-            elif interaction_type == "dislike":
-                disliked_articles.add(id)
-            elif interaction_type == "read" and read_time_seconds >= READ_TIME_THRESHOLD:
-                read_articles.add(id)
-
-        # Get all articles to use for recommendations
-        candidate_articles = liked_articles.union(read_articles)
-        disliked_candidate_articles = disliked_articles  # New: Track articles the user disliked
-
-        # If no valid articles to recommend from, return empty
-        if not candidate_articles and not disliked_candidate_articles:
-            return jsonify({"error": "No valid articles for recommendations. Try engaging with more articles."}), 400
-
         recommendations = []
-        not_relevant_recommendations = []  # Store recommendations for disliked articles
 
-        # Generate recommendations for "liked" and "read more (120s+)" interactions
-        for article_id in candidate_articles:
+        for article_id, interaction_type, read_time_seconds in interactions:
+            if interaction_type == "like":
+                interaction_type_final = "like"
+            elif interaction_type == "read" and read_time_seconds >= READ_TIME_THRESHOLD:
+                interaction_type_final = "read"
+            elif interaction_type == "dislike" or read_time_seconds < READ_TIME_THRESHOLD:
+                interaction_type_final = "dislike"
+            else:
+                continue
+
             cursor.execute("SELECT headline FROM news_articles WHERE id = ?", (article_id,))
             source_headline = cursor.fetchone()
             source_headline = source_headline[0] if source_headline else "an article you engaged with"
@@ -103,6 +85,7 @@ def generate_recommendations():
                 for _, rec in recommended_articles.iterrows():
                     recommendations.append({
                         "id": int(rec["id"]),
+                        "interaction_type": interaction_type_final,
                         "source_article_id": article_id,
                         "source_article_headline": source_headline,
                         "date_publish": rec["date_publish"],
@@ -112,49 +95,27 @@ def generate_recommendations():
                         "political_leaning": rec["political_leaning"]
                     })
 
-        # Generate "not relevant" recommendations for disliked articles
-        for article_id in disliked_candidate_articles:
-            cursor.execute("SELECT headline FROM news_articles WHERE id = ?", (article_id,))
-            source_headline = cursor.fetchone()
-            source_headline = source_headline[0] if source_headline else "an article you engaged with"
-
-            recommended_articles = recommend_articles_bias_controlled(article_id, polusa_balanced)
-
-            if recommended_articles is not None:
-                for _, rec in recommended_articles.iterrows():
-                    not_relevant_recommendations.append({
-                        "id": int(rec["id"]),
-                        "source_article_id": article_id,
-                        "source_article_headline": source_headline,
-                        "date_publish": rec["date_publish"],
-                        "headline": rec["headline"],
-                        "outlet": rec["outlet"],
-                        "url": rec["url"],
-                        "political_leaning": rec["political_leaning"]
-                    })
-
-        # Store recommendations in database
         for rec in recommendations:
             cursor.execute("""
-                INSERT INTO user_recommendations (id, user_id, source_article_id, source_article_headline, date_publish, headline, outlet, url, political_leaning) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (rec["id"], user_id, rec["source_article_id"], rec["source_article_headline"], rec["date_publish"], rec["headline"], rec["outlet"], rec["url"], rec["political_leaning"]))
-
-        # Store "not relevant" recommendations in database (NEW)
-        for rec in not_relevant_recommendations:
-            cursor.execute("""
-                INSERT INTO user_recommendations (id, user_id, source_article_id, source_article_headline, date_publish, headline, outlet, url, political_leaning) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (rec["id"], user_id, rec["source_article_id"], rec["source_article_headline"], rec["date_publish"], rec["headline"], rec["outlet"], rec["url"], rec["political_leaning"]))
+                INSERT INTO user_recommendations (
+                    id, user_id, interaction_type, source_article_id,
+                    source_article_headline, date_publish, headline, outlet, url, political_leaning
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                rec["id"], user_id, rec["interaction_type"], rec["source_article_id"],
+                rec["source_article_headline"], rec["date_publish"], rec["headline"],
+                rec["outlet"], rec["url"], rec["political_leaning"]
+            ))
 
         # Update last recommendation request time
-        cursor.execute("""
-            UPDATE users SET last_recommendation_timestamp = ? WHERE id = ?
-        """, (datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'), user_id))
-
+        cursor.execute("UPDATE users SET last_recommendation_timestamp = ? WHERE id = ?", 
+                       (datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'), user_id))
         conn.commit()
 
-        return jsonify({"success": True, "recommendations": recommendations})
+        return jsonify({
+            "success": True,
+            "recommendations": [r for r in recommendations if r["interaction_type"] in ("like", "read")]
+        })
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500

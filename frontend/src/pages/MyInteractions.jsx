@@ -28,8 +28,7 @@ import {
   ModalCloseButton,
 } from "@chakra-ui/react";
 import { SunIcon, MoonIcon, ChevronDownIcon, ChevronUpIcon, WarningIcon } from "@chakra-ui/icons";
-import { FaThumbsUp, FaThumbsDown, FaBook, FaTrashCan } from "react-icons/fa6";
-import { useNavigate } from "react-router-dom";
+import { FaTrashCan } from "react-icons/fa6";
 import { motion, AnimatePresence } from "framer-motion";
 
 const primaryColorLight = '#c6001e';
@@ -39,8 +38,6 @@ import logoExploreBright from "../assets/logo-explore-bright.png";
 import logoExploreDark from "../assets/logo-explore-dark.png";
 
 const MyInteractions = ({ interactions, deleteInteraction }) => {
-  const navigate = useNavigate();
-
   const logo = useColorModeValue(logoExploreBright, logoExploreDark);
   const logoHeight = useBreakpointValue({ base: '28px', md: '33px' });
 
@@ -109,12 +106,6 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
     setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
   };
 
-  const getInteractionIcon = (interactionType) => {
-    if (interactionType === "like") return <IconButton icon={<FaThumbsUp />}/>
-    if (interactionType === "dislike") return <IconButton icon={<FaThumbsDown />}/>
-    return <IconButton icon={<FaBook />}/>
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
@@ -178,7 +169,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                 <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
                   <Thead>
                     <Tr>
-                      <Th width="5%" textAlign="center">
+                      <Th width="10%" textAlign="center">
                         <Flex align="center" justify="center">
                           <b>Date</b>
                           <IconButton
@@ -191,9 +182,8 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                           />
                         </Flex>
                       </Th>
-                      <Th width="5%" textAlign="center">Interaction</Th>
                       <Th width="40%" textAlign="center">Interacted Article</Th>
-                      <Th width="50%" textAlign="center">Suggested News</Th>
+                      <Th width="40%" textAlign="center">Suggested News</Th>
                       <Th width="5%" textAlign="center">Remove</Th>
                       <Th width="5%" textAlign="center">Select</Th>
                     </Tr>
@@ -212,15 +202,10 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                             transition={{ duration: 0.5 }}
                           >
                             <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>
-                            <Td textAlign="center">
-                              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                  {getInteractionIcon(interaction.interaction_type)}
-                              </motion.div>
-                            </Td>
                             {/* Interacted Article */}
                             <Td textAlign="justify">
                               <Box mb={2}>
-                                <Text fontWeight="bold">
+                                <Text fontWeight="semibold">
                                   <a 
                                     href={interaction.url} 
                                     target="_blank" 
@@ -244,7 +229,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                               {interaction.recommendations.length > 0 ? (
                                 interaction.recommendations.map((rec, index) => (
                                   <Box key={index} mb={2}>
-                                    <Text fontWeight="bold">
+                                    <Text fontWeight="semibold">
                                       <a 
                                         href={rec.url} 
                                         target="_blank" 
@@ -336,7 +321,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                   No suggested news found.
                 </Text>
                 <Text fontSize="md" color="gray.400" textAlign="center">
-                  Start receiving diverse news recommendations with Horizon Explore, ensuring balanced perspectives and reducing bias in your daily news consumption.
+                  Engage with articles by liking them or spending more time reading. Horizon Explore will then provide personalized recommendations, while maintaining a balanced and diverse perspective.
                 </Text>
               </Flex>
             </motion.div>
@@ -350,7 +335,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                 <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
                   <Thead>
                     <Tr>
-                      <Th width="5%" textAlign="center">
+                      <Th width="10%" textAlign="center">
                         <Flex align="center" justify="center">
                           <b>Date</b>
                           <IconButton
@@ -363,9 +348,8 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                           />
                         </Flex>
                       </Th>
-                      <Th width="5%" textAlign="center">Interaction</Th>
                       <Th width="40%" textAlign="center">Interacted Article</Th>
-                      <Th width="50%" textAlign="center">Not Relevant News</Th>
+                      <Th width="40%" textAlign="center">Not Relevant News</Th>
                       <Th width="5%" textAlign="center">Remove</Th>
                       <Th width="5%" textAlign="center">Select</Th>
                     </Tr>
@@ -384,15 +368,10 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                             transition={{ duration: 0.5 }}
                           >
                             <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>
-                            <Td textAlign="center">
-                              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                {getInteractionIcon(interaction.interaction_type)}
-                              </motion.div>
-                            </Td>
                             {/* Interacted Article */}
                             <Td textAlign="justify">
                               <Box mb={2}>
-                              <Text fontWeight="bold">
+                              <Text fontWeight="semibold">
                                   <a 
                                     href={interaction.url} 
                                     target="_blank" 
@@ -416,7 +395,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                               {interaction.recommendations.length > 0 ? (
                                 interaction.recommendations.map((rec, index) => (
                                   <Box key={index} mb={2}>
-                                    <Text fontWeight="bold">
+                                    <Text fontWeight="semibold">
                                       <a 
                                         href={rec.url} 
                                         target="_blank" 
@@ -505,10 +484,10 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
               <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "15vh" }}>
                 <WarningIcon boxSize="6" color="gray.500" mb="2" />
                 <Text fontSize="lg" color="gray.500" textAlign="center">
-                  No not relevant news found.
+                  No less relevant news found.
                 </Text>
                 <Text fontSize="md" color="gray.400" textAlign="center">
-                  Start receiving diverse news recommendations with Horizon Explore, ensuring balanced perspectives and reducing bias in your daily news consumption.
+                  If you find certain articles not relevant or unhelpful, let us know by disliking them. Horizon Explore will use this feedback to improve your experience and avoid suggesting similar content.
                 </Text>
               </Flex>
             </motion.div>
@@ -522,10 +501,10 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                 >
                 <ModalHeader>Confirm Deletion</ModalHeader>
                 <ModalCloseButton />
-                <ModalBody>
+                <ModalBody textAlign="justify">
                   {interactionToDelete
-                    ? "Are you sure you want to delete this interaction?"
-                    : "Are you sure you want to delete the selected interactions?"}
+                    ? "Are you sure you want to delete this interaction? This will remove the selected news article and its recommendations."
+                    : "Are you sure you want to delete the selected interactions? This will remove the selected news articles and their recommendations."}
                 </ModalBody>
                 <ModalFooter>
                   <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>

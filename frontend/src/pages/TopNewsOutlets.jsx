@@ -47,7 +47,7 @@ const primaryColorDark = '#cf2640';
 import logoBalanceBright from "../assets/logo-balance-bright.png";
 import logoBalanceDark from "../assets/logo-balance-dark.png";
 
-const TopSourcesOutlets = ({ claimChecks, deleteClaimCheck }) => {
+const TopNewsOutlets = ({ claimChecks, deleteClaimCheck }) => {
   const navigate = useNavigate();
 
   const logo = useColorModeValue(logoBalanceBright, logoBalanceDark);
@@ -197,7 +197,7 @@ const TopSourcesOutlets = ({ claimChecks, deleteClaimCheck }) => {
       <Box px={{ md: 4 }} py={{ md: 6 }}>
         <Flex direction="column" bg={cardBg} p={8} borderRadius="md" shadow="md">
           <Flex justify="space-between" align="center" mb="4">
-            <Heading fontSize={{ base: '3xl', md: '4xl' }}>My Claim Checks</Heading>                    
+            <Heading fontSize={{ base: '3xl', md: '4xl' }}>Top News Outlets</Heading>                    
             <HStack spacing="4" display={{ base: "none", lg: "flex" }}>
               <motion.img
                 src={logo}
@@ -416,4 +416,4 @@ const TopSourcesOutlets = ({ claimChecks, deleteClaimCheck }) => {
   );
 };
 
-export default TopSourcesOutlets;
+export default TopNewsOutlets;

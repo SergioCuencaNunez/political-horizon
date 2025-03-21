@@ -39,7 +39,7 @@ const primaryActiveDark = '#e14f64';
 import logoBalanceBright from "../assets/logo-balance-bright.png";
 import logoBalanceDark from "../assets/logo-balance-dark.png";
 
-const ExposureDiversityReport = ({ addClaimCheck }) => {
+const BalanceReport = ({ addClaimCheck }) => {
   const navigate = useNavigate();
   // For development only
   const BACKEND_URL_DB = `${window.location.protocol}//${window.location.hostname}:5001`;
@@ -170,7 +170,7 @@ const ExposureDiversityReport = ({ addClaimCheck }) => {
       <Box px={{ md: 4 }} py={{ md: 6 }}>
         <Flex direction="column" bg={cardBg} p={8} borderRadius="md" shadow="md">
           <Flex justify="space-between" align="center" mb="4">
-            <Heading fontSize={{ base: '3xl', md: '4xl' }}>Verify Claims</Heading>          
+            <Heading fontSize={{ base: '3xl', md: '4xl' }}>Balance Report</Heading>          
             <HStack spacing="4" display={{ base: "none", lg: "flex" }}>
               <motion.img
                 src={logo}
@@ -394,4 +394,4 @@ const ExposureDiversityReport = ({ addClaimCheck }) => {
   );
 };
 
-export default ExposureDiversityReport;
+export default BalanceReport;

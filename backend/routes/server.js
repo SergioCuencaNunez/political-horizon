@@ -248,97 +248,49 @@ app.get("/user/interactions", verifyToken, (req, res) => {
   db.all(interactionsQuery, [req.user.id], (err, interactions) => {
     if (err) return res.status(500).json({ error: "Failed to fetch interactions" });
 
-    if (interactions.length === 0) return res.json([]); // No interactions
+    if (interactions.length === 0) return res.json([]);
 
-    // Collect all interaction news IDs
     const interactionNewsIds = interactions.map((interaction) => interaction.id);
+    const placeholders = interactionNewsIds.map(() => "?").join(",");
 
-    // Fetch headlines and URLs for interacted news
     const newsQuery = `
       SELECT id, headline, outlet, url 
       FROM news_articles 
-      WHERE id IN (${interactionNewsIds.map(() => "?").join(",")});
+      WHERE id IN (${placeholders});
     `;
 
     db.all(newsQuery, interactionNewsIds, (err, newsData) => {
       if (err) return res.status(500).json({ error: "Failed to fetch interacted news details" });
 
-      // Map news data for easy lookup
       const newsMap = {};
       newsData.forEach((news) => {
         newsMap[news.id] = { headline: news.headline, outlet: news.outlet, url: news.url };
       });
 
-      // Separate IDs for different interaction types
-      const positiveInteractionIds = interactions
-        .filter((interaction) => 
-          interaction.interaction_type === "like" || interaction.read_time_seconds >= 120
-        )
-        .map((interaction) => interaction.id);
-
-      const negativeInteractionIds = interactions
-        .filter((interaction) => interaction.interaction_type === "dislike")
-        .map((interaction) => interaction.id);
-
-      if (positiveInteractionIds.length === 0 && negativeInteractionIds.length === 0) {
-        return res.json(
-          interactions.map((interaction) => ({
-            ...interaction,
-            headline: newsMap[interaction.id]?.headline || "Unknown Article",
-            outlet: newsMap[interaction.id]?.outlet || "Unknown Outlet",
-            url: newsMap[interaction.id]?.url || "#",
-            recommendations: [],
-          }))
-        );
-      }
-
-      // Fetch positive recommendations (like/read more)
-      const positiveQuery = `
+      const recommendationsQuery = `
         SELECT * FROM user_recommendations
-        WHERE user_id = ? 
-        AND source_article_id IN (${positiveInteractionIds.map(() => "?").join(",")})
+        WHERE user_id = ? AND source_article_id IN (${placeholders})
         ORDER BY source_article_id, date_publish DESC;
       `;
 
-      // Fetch negative recommendations (dislike)
-      const negativeQuery = `
-        SELECT * FROM user_recommendations
-        WHERE user_id = ? 
-        AND source_article_id IN (${negativeInteractionIds.map(() => "?").join(",")})
-        ORDER BY source_article_id, date_publish DESC;
-      `;
-
-      db.all(positiveQuery, [req.user.id, ...positiveInteractionIds], (err, positiveRecommendations) => {
+      db.all(recommendationsQuery, [req.user.id, ...interactionNewsIds], (err, allRecommendations) => {
         if (err) return res.status(500).json({ error: "Failed to fetch recommendations" });
 
-        db.all(negativeQuery, [req.user.id, ...negativeInteractionIds], (err, negativeRecommendations) => {
-          if (err) return res.status(500).json({ error: "Failed to fetch negative recommendations" });
-
-          // Attach recommendations and interacted news to each interaction
-          const interactionsWithDetails = interactions.map((interaction) => {
-            let matchingRecommendations = [];
-            
-            if (interaction.interaction_type === "like" || interaction.read_time_seconds >= 120) {
-              matchingRecommendations = positiveRecommendations
-                .filter((rec) => rec.source_article_id === interaction.id)
-                .slice(0, 5); // Max 5 recommended news
-            } else if (interaction.interaction_type === "dislike") {
-              matchingRecommendations = negativeRecommendations
-                .filter((rec) => rec.source_article_id === interaction.id)
-                .slice(0, 5); // Max 5 "not relevant" news
-            }
-
-            return {
-              ...interaction,
-              headline: newsMap[interaction.id]?.headline || "Unknown Article",
-              outlet: newsMap[interaction.id]?.outlet || "Unknown Outlet",
-              url: newsMap[interaction.id]?.url || "#",
-              recommendations: matchingRecommendations,
-            };
-          });
-
-          res.json(interactionsWithDetails);
+        const grouped = {};
+        allRecommendations.forEach((rec) => {
+          if (!grouped[rec.source_article_id]) grouped[rec.source_article_id] = [];
+          grouped[rec.source_article_id].push(rec);
         });
+
+        const result = interactions.map((interaction) => ({
+          ...interaction,
+          headline: newsMap[interaction.id]?.headline || "Unknown Article",
+          outlet: newsMap[interaction.id]?.outlet || "Unknown Outlet",
+          url: newsMap[interaction.id]?.url || "#",
+          recommendations: (grouped[interaction.id] || []).slice(0, 5),
+        }));
+
+        res.json(result);
       });
     });
   });
@@ -360,18 +312,28 @@ const resetInteractionsSequence = () => {
   });
 };
 
-// Delete user interaction
+// Delete user interaction and associated recommendations
 app.delete("/user/interactions/:id", verifyToken, (req, res) => {
   const { id } = req.params;
 
-  const query = "DELETE FROM user_interactions WHERE id = ? AND user_id = ?";
-  db.run(query, [id, req.user.id], function (err) {
-    if (err) return res.status(500).json({ error: "Failed to delete interaction" });
-    if (this.changes === 0)
-      return res.status(404).json({ error: "Interaction not found or not authorized" });
+  // Delete recommendations linked to this interaction
+  const deleteRecommendationsQuery = "DELETE FROM user_recommendations WHERE source_article_id = ? AND user_id = ?";
+  
+  db.run(deleteRecommendationsQuery, [id, req.user.id], function (err) {
+    if (err) return res.status(500).json({ error: "Failed to delete recommendations" });
 
-    resetInteractionsSequence(); // Reset sequence after deletion
-    res.status(204).send();
+    // Delete the interaction itself
+    const deleteInteractionQuery = "DELETE FROM user_interactions WHERE id = ? AND user_id = ?";
+    db.run(deleteInteractionQuery, [id, req.user.id], function (err) {
+      if (err) return res.status(500).json({ error: "Failed to delete interaction" });
+
+      if (this.changes === 0) {
+        return res.status(404).json({ error: "Interaction not found or not authorized" });
+      }
+
+      resetInteractionsSequence(); // Reset sequence after deletion
+      res.status(204).send();
+    });
   });
 });
 
@@ -439,7 +401,7 @@ app.get("/articles/random", verifyToken, (req, res) => {
 app.get("/articles/recommended", verifyToken, (req, res) => {
   const query = `
     SELECT * FROM user_recommendations 
-    WHERE user_id = ? 
+    WHERE user_id = ? AND interaction_type IN ('like', 'read')
     ORDER BY date_publish DESC;
   `;
 
