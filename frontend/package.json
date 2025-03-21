@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@babel/runtime": "^7.26.10",
     "@chakra-ui/icons": "^2.2.4",
     "@chakra-ui/react": "^2.10.4",
     "@chakra-ui/theme-tools": "^2.2.7",
