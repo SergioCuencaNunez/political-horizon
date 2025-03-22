@@ -11,7 +11,6 @@ import {
   Tr,
   Th,
   Td,
-  Badge,
   Button,
   IconButton,
   Checkbox,
@@ -117,7 +116,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
         <Flex direction="column" bg={cardBg} p={8} borderRadius="md" shadow="md">
           <Flex justify="space-between" align="center" mb="4">
             <Heading fontSize={{ base: '3xl', md: '4xl' }}>My Interactions</Heading>
-           <HStack spacing="4" display={{ base: "none", md: "none", lg: "flex" }}>
+            <HStack spacing="4" display={{ base: "none", md: "none", lg: "flex" }}>
               <motion.img
                   src={logo}
                   alt="Horizon Explore Logo"
@@ -162,76 +161,69 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
           <Box borderBottom="1px" borderColor="gray.300" mb="4"></Box>
 
           {/* Suggested News Table */}
-          <Heading fontSize="2xl" mb="3">Suggested News</Heading>
-          {interactions.some((i) => i.interaction_type !== "dislike") ? (
-            <>
-              <Box overflowX="auto">
-                <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
-                  <Thead>
-                    <Tr>
-                      <Th width="10%" textAlign="center">
-                        <Flex align="center" justify="center">
-                          <b>Date</b>
-                          <IconButton
-                            aria-label="Toggle Sort Order"
-                            icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
-                            size="xs"
-                            variant="ghost"
-                            onClick={toggleSortOrder}
-                            ml="1"
-                          />
-                        </Flex>
-                      </Th>
-                      <Th width="40%" textAlign="center">Interacted Article</Th>
-                      <Th width="40%" textAlign="center">Suggested News</Th>
-                      <Th width="5%" textAlign="center">Remove</Th>
-                      <Th width="5%" textAlign="center">Select</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody as={motion.tbody}>
-                    <AnimatePresence>
-                      {sortedInteractions
-                        .filter((interaction) => interaction.interaction_type !== "dislike")
-                        .map((interaction) => (
-                          <motion.tr
-                            key={interaction.id}
-                            layout
-                            initial={{ opacity: 0, y: 50 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -50 }}
-                            transition={{ duration: 0.5 }}
-                          >
-                            <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>
-                            {/* Interacted Article */}
-                            <Td textAlign="justify">
-                              <Box mb={2}>
-                                <Text fontWeight="semibold">
-                                  <a 
-                                    href={interaction.url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    style={{ 
-                                      color: "inherit", 
-                                      textDecoration: "none", 
-                                      transition: "text-decoration 0.2s ease-in-out"
-                                    }}
-                                    onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
-                                    onMouseLeave={(e) => e.target.style.textDecoration = "none"}
-                                  >
-                                    {interaction.headline || "Unknown Article"}
-                                  </a>
-                                </Text>
-                                <Text fontSize="sm" color="gray.500">{interaction.outlet || "Unknown Outlet"}</Text>
-                              </Box>
-                            </Td>
-                            {/* Suggested News */}
-                            <Td textAlign="justify">
-                              {interaction.recommendations.length > 0 ? (
-                                interaction.recommendations.map((rec, index) => (
-                                  <Box key={index} mb={2}>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
+            <Heading fontSize="2xl" mb="2">Suggested News</Heading>
+            <Text mb="4" textAlign="justify">
+              {useBreakpointValue({
+                base: "These are the news articles you liked or spent time reading. We use this to understand your preferences and offer more relevant, balanced recommendations.",
+                lg: "  These are the news articles you have interacted with, either by explicitly liking them or by spending a significant amount of time reading them. These interactions help us understand your interests and preferences in order to provide more relevant and balanced recommendations.",
+              })}
+            </Text>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+          >
+              {interactions.some((i) => i.interaction_type !== "dislike") ? (
+                <>
+                  <Box overflowX="auto">
+                    <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
+                      <Thead>
+                        <Tr>
+                          <Th width="10%" textAlign="center">
+                            <Flex align="center" justify="center">
+                              <b>Date</b>
+                              <IconButton
+                                aria-label="Toggle Sort Order"
+                                icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
+                                size="xs"
+                                variant="ghost"
+                                onClick={toggleSortOrder}
+                                ml="1"
+                              />
+                            </Flex>
+                          </Th>
+                          <Th width="40%" textAlign="center">Interacted Article</Th>
+                          <Th width="40%" textAlign="center">Suggested News</Th>
+                          <Th width="5%" textAlign="center">Remove</Th>
+                          <Th width="5%" textAlign="center">Select</Th>
+                        </Tr>
+                      </Thead>
+                      <Tbody as={motion.tbody}>
+                        <AnimatePresence>
+                          {sortedInteractions
+                            .filter((interaction) => interaction.interaction_type !== "dislike")
+                            .map((interaction) => (
+                              <motion.tr
+                                key={interaction.id}
+                                layout
+                                initial={{ opacity: 0, y: 50 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -50 }}
+                                transition={{ duration: 0.5 }}
+                              >
+                                <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>
+                                {/* Interacted Article */}
+                                <Td textAlign="justify">
+                                  <Box mb={2}>
                                     <Text fontWeight="semibold">
                                       <a 
-                                        href={rec.url} 
+                                        href={interaction.url} 
                                         target="_blank" 
                                         rel="noopener noreferrer" 
                                         style={{ 
@@ -242,256 +234,299 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                                         onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
                                         onMouseLeave={(e) => e.target.style.textDecoration = "none"}
                                       >
-                                        {rec.headline}
+                                        {interaction.headline || "Unknown Article"}
                                       </a>
                                     </Text>
-                                    <Text fontSize="sm" color="gray.500">{rec.outlet}</Text>
+                                    <Text fontSize="sm" color="gray.500">{interaction.outlet || "Unknown Outlet"}</Text>
                                   </Box>
-                                ))
-                              ) : (
-                                <Text color="gray.400">No suggested news</Text>
-                              )}
-                            </Td>
-                            <Td textAlign="center">
-                              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                <IconButton
-                                  icon={<FaTrashCan />}
-                                  color={primaryColor}
-                                  onClick={() => handleDelete(interaction)}
-                                />
-                              </motion.div>
-                            </Td>
-                            <Td textAlign="center">
-                              <Checkbox 
-                                isChecked={selectedSuggested.includes(interaction)} 
-                                onChange={(e) => handleSelectInteraction(interaction, e.target.checked, "suggested")} 
-                              />
-                            </Td>
-                          </motion.tr>
-                        ))}
-                    </AnimatePresence>
-                  </Tbody>
-                </Table>
-              </Box>
-              <Flex justify="space-between" align="center" height="40px">
-                <Checkbox 
-                  isChecked={selectedSuggested.length === interactions.filter(i => i.interaction_type !== "dislike").length} 
-                  onChange={(e) => handleSelectAllSuggested(e.target.checked)}
-                >
-                  Select All Suggested
-                </Checkbox>
-                <AnimatePresence>
-                  {selectedSuggested.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8, x: 0 }}
-                      animate={{
-                        opacity: 1,
-                        scale: 1,
-                      }}
-                      exit={{ opacity: 0, scale: 0.8, x: 0 }}
-                      transition={{ duration: 0.3 }}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
+                                </Td>
+                                {/* Suggested News */}
+                                <Td textAlign="justify">
+                                  {interaction.recommendations.length > 0 ? (
+                                    interaction.recommendations.map((rec, index) => (
+                                      <Box key={index} mb={2}>
+                                        <Text fontWeight="semibold">
+                                          <a 
+                                            href={rec.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            style={{ 
+                                              color: "inherit", 
+                                              textDecoration: "none", 
+                                              transition: "text-decoration 0.2s ease-in-out"
+                                            }}
+                                            onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
+                                            onMouseLeave={(e) => e.target.style.textDecoration = "none"}
+                                          >
+                                            {rec.headline}
+                                          </a>
+                                        </Text>
+                                        <Text fontSize="sm" color="gray.500">{rec.outlet}</Text>
+                                      </Box>
+                                    ))
+                                  ) : (
+                                    <Text color="gray.400">No suggested news</Text>
+                                  )}
+                                </Td>
+                                <Td textAlign="center">
+                                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                    <IconButton
+                                      icon={<FaTrashCan />}
+                                      color={primaryColor}
+                                      onClick={() => handleDelete(interaction)}
+                                    />
+                                  </motion.div>
+                                </Td>
+                                <Td textAlign="center">
+                                  <Checkbox 
+                                    isChecked={selectedSuggested.includes(interaction)} 
+                                    onChange={(e) => handleSelectInteraction(interaction, e.target.checked, "suggested")} 
+                                  />
+                                </Td>
+                              </motion.tr>
+                            ))}
+                        </AnimatePresence>
+                      </Tbody>
+                    </Table>
+                  </Box>
+                  <Flex justify="space-between" align="center" height="40px">
+                    <Checkbox 
+                      isChecked={selectedSuggested.length === interactions.filter(i => i.interaction_type !== "dislike").length} 
+                      onChange={(e) => handleSelectAllSuggested(e.target.checked)}
                     >
-                      <Button
-                        colorScheme="red"
-                        onClick={() => {
-                          setInteractionToDelete(null);
-                          onOpen();
-                        }}
-                        isDisabled={selectedSuggested.length === 0}
-                      >
-                        Delete Selected
-                      </Button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Flex>
-            </>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 15 }}
-              transition={{ duration: 0.5 }}
-            >
-              <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "15vh" }}>
-                <WarningIcon boxSize="6" color="gray.500" mb="2" />
-                <Text fontSize="lg" color="gray.500" textAlign="center">
-                  No suggested news found.
-                </Text>
-                <Text fontSize="md" color="gray.400" textAlign="center">
-                  Engage with articles by liking them or spending more time reading. Horizon Explore will then provide personalized recommendations, while maintaining a balanced and diverse perspective.
-                </Text>
-              </Flex>
-            </motion.div>
-          )}
+                      Select All Suggested
+                    </Checkbox>
+                    <AnimatePresence>
+                      {selectedSuggested.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.8, x: 0 }}
+                          animate={{
+                            opacity: 1,
+                            scale: 1,
+                          }}
+                          exit={{ opacity: 0, scale: 0.8, x: 0 }}
+                          transition={{ duration: 0.3 }}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          <Button
+                            colorScheme="red"
+                            onClick={() => {
+                              setInteractionToDelete(null);
+                              onOpen();
+                            }}
+                            isDisabled={selectedSuggested.length === 0}
+                          >
+                            Delete Selected
+                          </Button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </Flex>
+                </>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 15 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "15vh" }}>
+                    <WarningIcon boxSize="6" color="gray.500" mb="2" />
+                    <Text fontSize="lg" color="gray.500" textAlign="center">
+                      No suggested news found.
+                    </Text>
+                    <Text fontSize="md" color="gray.400" textAlign="center">
+                      Engage with articles by liking them or spending more time reading. Horizon Explore will then provide personalized recommendations, while maintaining a balanced and diverse perspective.
+                    </Text>
+                  </Flex>
+                </motion.div>
+              )}
+          </motion.div>
 
           {/* Not Relevant News Table */}
-          <Heading fontSize="2xl" mt="6" mb="3">Not Relevant News</Heading>
-          {interactions.some((i) => i.interaction_type === "dislike") ? (
-            <>
-              <Box overflowX="auto">
-                <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
-                  <Thead>
-                    <Tr>
-                      <Th width="10%" textAlign="center">
-                        <Flex align="center" justify="center">
-                          <b>Date</b>
-                          <IconButton
-                            aria-label="Toggle Sort Order"
-                            icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
-                            size="xs"
-                            variant="ghost"
-                            onClick={toggleSortOrder}
-                            ml="1"
-                          />
-                        </Flex>
-                      </Th>
-                      <Th width="40%" textAlign="center">Interacted Article</Th>
-                      <Th width="40%" textAlign="center">Not Relevant News</Th>
-                      <Th width="5%" textAlign="center">Remove</Th>
-                      <Th width="5%" textAlign="center">Select</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody as={motion.tbody}>
-                    <AnimatePresence>
-                      {sortedInteractions
-                        .filter((interaction) => interaction.interaction_type === "dislike")
-                        .map((interaction) => (
-                          <motion.tr
-                            key={interaction.id}
-                            layout
-                            initial={{ opacity: 0, y: 50 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -50 }}
-                            transition={{ duration: 0.5 }}
-                          >
-                            <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>
-                            {/* Interacted Article */}
-                            <Td textAlign="justify">
-                              <Box mb={2}>
-                              <Text fontWeight="semibold">
-                                  <a 
-                                    href={interaction.url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    style={{ 
-                                      color: "inherit", 
-                                      textDecoration: "none", 
-                                      transition: "text-decoration 0.2s ease-in-out"
-                                    }}
-                                    onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
-                                    onMouseLeave={(e) => e.target.style.textDecoration = "none"}
-                                  >
-                                    {interaction.headline || "Unknown Article"}
-                                  </a>
-                                </Text>
-                                <Text fontSize="sm" color="gray.500">{interaction.outlet || "Unknown Outlet"}</Text>
-                              </Box>
-                            </Td>
-                            {/* Not Relevant News */}
-                            <Td textAlign="justify">
-                              {interaction.recommendations.length > 0 ? (
-                                interaction.recommendations.map((rec, index) => (
-                                  <Box key={index} mb={2}>
-                                    <Text fontWeight="semibold">
-                                      <a 
-                                        href={rec.url} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer" 
-                                        style={{ 
-                                          color: "inherit", 
-                                          textDecoration: "none", 
-                                          transition: "text-decoration 0.2s ease-in-out"
-                                        }}
-                                        onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
-                                        onMouseLeave={(e) => e.target.style.textDecoration = "none"}
-                                      >
-                                        {rec.headline}
-                                      </a>
-                                    </Text>
-                                    <Text fontSize="sm" color="gray.500">{rec.outlet}</Text>
-                                  </Box>
-                                ))
-                              ) : (
-                                <Text color="gray.400">No not relevant news</Text>
-                              )}
-                            </Td>
-                            <Td textAlign="center">
-                              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                <IconButton
-                                  icon={<FaTrashCan />}
-                                  color={primaryColor}
-                                  onClick={() => handleDelete(interaction)}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+          >
+            <Heading fontSize="2xl" mt="4" mb="2">Not Relevant News</Heading>
+            <Text mb="4" textAlign="justify">
+              {useBreakpointValue({
+                base: "These are articles you disliked or didn’t engage with. We use this to avoid showing you similar content in future suggestions.",
+                lg: "These are the news articles you have shown little interest in, either by disliking them or not spending enough time reading. This feedback helps us fine-tune your interests and avoid suggesting similar content in future recommendations.",
+              })}
+            </Text>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8, duration: 0.5 }}
+          >
+            {interactions.some((i) => i.interaction_type === "dislike") ? (
+              <>
+                <Box overflowX="auto">
+                  <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
+                    <Thead>
+                      <Tr>
+                        <Th width="10%" textAlign="center">
+                          <Flex align="center" justify="center">
+                            <b>Date</b>
+                            <IconButton
+                              aria-label="Toggle Sort Order"
+                              icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
+                              size="xs"
+                              variant="ghost"
+                              onClick={toggleSortOrder}
+                              ml="1"
+                            />
+                          </Flex>
+                        </Th>
+                        <Th width="40%" textAlign="center">Interacted Article</Th>
+                        <Th width="40%" textAlign="center">Not Relevant News</Th>
+                        <Th width="5%" textAlign="center">Remove</Th>
+                        <Th width="5%" textAlign="center">Select</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody as={motion.tbody}>
+                      <AnimatePresence>
+                        {sortedInteractions
+                          .filter((interaction) => interaction.interaction_type === "dislike")
+                          .map((interaction) => (
+                            <motion.tr
+                              key={interaction.id}
+                              layout
+                              initial={{ opacity: 0, y: 50 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -50 }}
+                              transition={{ duration: 0.5 }}
+                            >
+                              <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>
+                              {/* Interacted Article */}
+                              <Td textAlign="justify">
+                                <Box mb={2}>
+                                <Text fontWeight="semibold">
+                                    <a 
+                                      href={interaction.url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      style={{ 
+                                        color: "inherit", 
+                                        textDecoration: "none", 
+                                        transition: "text-decoration 0.2s ease-in-out"
+                                      }}
+                                      onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
+                                      onMouseLeave={(e) => e.target.style.textDecoration = "none"}
+                                    >
+                                      {interaction.headline || "Unknown Article"}
+                                    </a>
+                                  </Text>
+                                  <Text fontSize="sm" color="gray.500">{interaction.outlet || "Unknown Outlet"}</Text>
+                                </Box>
+                              </Td>
+                              {/* Not Relevant News */}
+                              <Td textAlign="justify">
+                                {interaction.recommendations.length > 0 ? (
+                                  interaction.recommendations.map((rec, index) => (
+                                    <Box key={index} mb={2}>
+                                      <Text fontWeight="semibold">
+                                        <a 
+                                          href={rec.url} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer" 
+                                          style={{ 
+                                            color: "inherit", 
+                                            textDecoration: "none", 
+                                            transition: "text-decoration 0.2s ease-in-out"
+                                          }}
+                                          onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
+                                          onMouseLeave={(e) => e.target.style.textDecoration = "none"}
+                                        >
+                                          {rec.headline}
+                                        </a>
+                                      </Text>
+                                      <Text fontSize="sm" color="gray.500">{rec.outlet}</Text>
+                                    </Box>
+                                  ))
+                                ) : (
+                                  <Text color="gray.400">No not relevant news</Text>
+                                )}
+                              </Td>
+                              <Td textAlign="center">
+                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                  <IconButton
+                                    icon={<FaTrashCan />}
+                                    color={primaryColor}
+                                    onClick={() => handleDelete(interaction)}
+                                  />
+                                </motion.div>
+                              </Td>
+                              <Td textAlign="center">
+                                <Checkbox
+                                  isChecked={selectedNotRelevant.includes(interaction)} 
+                                  onChange={(e) => handleSelectInteraction(interaction, e.target.checked, "notRelevant")} 
                                 />
-                              </motion.div>
-                            </Td>
-                            <Td textAlign="center">
-                              <Checkbox
-                                isChecked={selectedNotRelevant.includes(interaction)} 
-                                onChange={(e) => handleSelectInteraction(interaction, e.target.checked, "notRelevant")} 
-                              />
-                            </Td>
-                          </motion.tr>
-                        ))}
-                      </AnimatePresence>
-                  </Tbody>
-                </Table>
-              </Box>
-              <Flex justify="space-between" align="center" height="40px">
-                <Checkbox
-                  isChecked={selectedNotRelevant.length === interactions.filter(i => i.interaction_type === "dislike").length} 
-                  onChange={(e) => handleSelectAllNotRelevant(e.target.checked)}
-                >
-                  Select All Not Relevant
-                </Checkbox>
-                <AnimatePresence>
-                  {selectedNotRelevant.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8, x: 0 }}
-                      animate={{
-                        opacity: 1,
-                        scale: 1,
-                      }}
-                      exit={{ opacity: 0, scale: 0.8, x: 0 }}
-                      transition={{ duration: 0.3 }}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <Button
-                        colorScheme="red"
-                        onClick={() => {
-                          setInteractionToDelete(null);
-                          onOpen();
+                              </Td>
+                            </motion.tr>
+                          ))}
+                        </AnimatePresence>
+                    </Tbody>
+                  </Table>
+                </Box>
+                <Flex justify="space-between" align="center" height="40px">
+                  <Checkbox
+                    isChecked={selectedNotRelevant.length === interactions.filter(i => i.interaction_type === "dislike").length} 
+                    onChange={(e) => handleSelectAllNotRelevant(e.target.checked)}
+                  >
+                    Select All Not Relevant
+                  </Checkbox>
+                  <AnimatePresence>
+                    {selectedNotRelevant.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8, x: 0 }}
+                        animate={{
+                          opacity: 1,
+                          scale: 1,
                         }}
-                        isDisabled={selectedNotRelevant.length === 0}
+                        exit={{ opacity: 0, scale: 0.8, x: 0 }}
+                        transition={{ duration: 0.3 }}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
                       >
-                        Delete Selected
-                      </Button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Flex>
-            </>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 15 }}
-              transition={{ duration: 0.5 }}
-            >
-              <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "15vh" }}>
-                <WarningIcon boxSize="6" color="gray.500" mb="2" />
-                <Text fontSize="lg" color="gray.500" textAlign="center">
-                  No less relevant news found.
-                </Text>
-                <Text fontSize="md" color="gray.400" textAlign="center">
-                  If you find certain articles not relevant or unhelpful, let us know by disliking them. Horizon Explore will use this feedback to improve your experience and avoid suggesting similar content.
-                </Text>
-              </Flex>
-            </motion.div>
-          )}
+                        <Button
+                          colorScheme="red"
+                          onClick={() => {
+                            setInteractionToDelete(null);
+                            onOpen();
+                          }}
+                          isDisabled={selectedNotRelevant.length === 0}
+                        >
+                          Delete Selected
+                        </Button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Flex>
+              </>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 15 }}
+                transition={{ duration: 0.5 }}
+              >
+                <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "15vh" }}>
+                  <WarningIcon boxSize="6" color="gray.500" mb="2" />
+                  <Text fontSize="lg" color="gray.500" textAlign="center">
+                    No less relevant news found.
+                  </Text>
+                  <Text fontSize="md" color="gray.400" textAlign="center">
+                    If you find certain articles not relevant or unhelpful, let us know by disliking them. Horizon Explore will use this feedback to improve your experience and avoid suggesting similar content.
+                  </Text>
+                </Flex>
+              </motion.div>
+            )}
+          </motion.div>
 
           {/* Confirmation Modal */}
             <Modal isOpen={isOpen} onClose={onClose} isCentered>

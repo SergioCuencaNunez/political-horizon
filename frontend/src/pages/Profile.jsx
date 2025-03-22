@@ -40,7 +40,6 @@ import {
   FaChartBar,
   FaBalanceScale,
   FaCogs,
-  FaGlobe,
   FaTrashAlt,
 } from "react-icons/fa";
 import { useNavigate, Routes, Route } from "react-router-dom";
@@ -51,10 +50,7 @@ import logoDark from '../assets/logo-dark.png';
 
 import BrowseFeed from "./BrowseFeed";
 import MyInteractions from "./MyInteractions";
-import DetectionResults from "./DetectionResults";
 import BalanceReport from "./BalanceReport";
-import TopNewsOutlets from "./TopNewsOutlets";
-import ClaimCheckResults from "./ClaimCheckResults";
 import AccountDetails from "./AccountDetails";
 import NotFound from "../pages/NotFound"; 
 
@@ -95,89 +91,6 @@ const Profile = () => {
   const textColorAvatar = useColorModeValue('gray.500', 'gray.300');
   const dateFormat = useBreakpointValue({ base: 'small', md: 'medium', lg: 'full', xl: 'full' });
 
-  const getRatingColor = (rating) => {
-    const lowerRating = rating.toLowerCase();
-  
-    if (["false", "incorrect", "not true", "no", "fake", "falso", "incorrecto", "no verdadero"].includes(lowerRating)) {
-      return "red";
-    } else if (["true", "yes", "verdadero", "si"].includes(lowerRating)) {
-      return "green";
-    } else if (["mixture", "altered", "misleading", "engañoso", "alterado", "descontextualizado", "sin contexto"].includes(lowerRating)) {
-      return "orange";
-    } else if (lowerRating === "inconclusive") {
-      return "gray";
-    } else {
-      return "gray";
-    }
-  };
-  
-  const getRatingIcon = (rating) => {
-    const lowerRating = rating.toLowerCase();
-    if (["false", "incorrect", "not true", "no", "fake", "falso", "incorrecto", "no verdadero"].includes(lowerRating)) {
-      return <WarningTwoIcon color="red.500" />;
-    } else if (["true", "yes", "verdadero", "si"].includes(lowerRating)) {
-      return <CheckCircleIcon color="green.500" />;
-    } else if (["mixture", "altered", "misleading", "engañoso", "alterado", "descontextualizado", "sin contexto"].includes(lowerRating)) {
-      return <WarningIcon color="orange.500" />;
-    } else {
-      return <InfoIcon color="gray.500" />;
-    }
-  };
-  
-  const getAggregateRating = (ratings) => {
-    const normalizedRatings = ratings.map((rating) => rating.toLowerCase());
-  
-    const categories = {
-      true: ["true", "yes", "verdadero", "si"],
-      false: ["false", "incorrect", "not true", "no", "fake", "falso", "incorrecto", "no verdadero"],
-      inconclusive: ["mixture", "altered", "misleading", "engañoso", "alterado", "descontextualizado", "sin contexto"],
-    };
-  
-    let trueCount = 0;
-    let falseCount = 0;
-    let inconclusiveCount = 0;
-  
-    normalizedRatings.forEach((rating) => {
-      if (categories.true.includes(rating)) {
-        trueCount++;
-      } else if (categories.false.includes(rating)) {
-        falseCount++;
-      } else if (categories.inconclusive.includes(rating)) {
-        inconclusiveCount++;
-      }
-    });
-  
-    if (trueCount > falseCount && trueCount > inconclusiveCount) {
-      return "True";
-    } else if (falseCount > trueCount && falseCount > inconclusiveCount) {
-      return "False";
-    } else if (inconclusiveCount > trueCount && inconclusiveCount > falseCount) {
-      return "Misleading";
-    } else if (
-      (trueCount > 0 && falseCount > 0 && inconclusiveCount === 0) ||
-      (trueCount > 0 && inconclusiveCount > 0 && falseCount === 0) ||
-      (falseCount > 0 && inconclusiveCount > 0 && trueCount === 0)
-    ) {
-      return "Inconclusive";
-    } else if (normalizedRatings.length === 1) {
-      return ratings[0];
-    }
-  
-    return "Inconclusive";
-  };
-
-  const getPredictionColor = (prediction) => {
-    if (prediction === "Fake") return "red";
-    if (prediction === "True") return "green";
-    return "orange";
-  };
-  
-  const getPredictionIcon = (prediction) => {
-    if (prediction === "Fake") return <WarningTwoIcon color="red.500" />;
-    if (prediction === "True") return <CheckCircleIcon color="green.500" />;
-    return <WarningIcon color="orange.500" />;
-  };
-  
   const getCurrentDate = (dateFormat) => {
     const now = new Date();
     const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -218,9 +131,9 @@ const Profile = () => {
     if (!token) {
       navigate("/login");
       return;
-    }
+  };
 
-    const fetchUserData = async () => {
+  const fetchUserData = async () => {
       try {
         const response = await fetch(`${BACKEND_URL}/profile`, {
           method: "GET",
@@ -344,96 +257,6 @@ const Profile = () => {
       onInteractionModalClose();
     } catch (error) {
       console.error("Error deleting interaction(s):", error);
-    }
-  };
-
-  const [claimChecks, setClaimsChecks] = useState([]);
-
-  useEffect(() => {
-    const fetchClaimsCheck = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
-      try {
-        const response = await fetch(`${BACKEND_URL}/claims`, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await response.json();
-
-        if (response.ok) {
-          setClaimsChecks(data);
-        } else {
-          console.error("Failed to fetch claim checks:", data.error);
-        }
-      } catch (error) {
-        console.error("Error fetching claim checks:", error);
-      }
-    };
-
-    fetchClaimsCheck();
-  }, [navigate]);
-
-  // Add a claim check to server
-  const addClaimCheck = (newClaimCheck) => {
-    setClaimsChecks((prev) => [...prev, newClaimCheck]);
-  };
-
-  // Delete a claim check from server
-  const deleteClaimCheck = async (id) => {
-    const token = localStorage.getItem("token");
-    try {
-      const response = await fetch(`${BACKEND_URL}/claims/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        setClaimsChecks((prev) => prev.filter((d) => d.id !== id));
-      } else {
-        console.error("Failed to delete claim check.");
-      }
-    } catch (error) {
-      console.error("Error deleting claim check:", error);
-    }
-  };
-
-  const sortedClaimChecks = [...claimChecks].sort((a, b) => {
-    return sortOrder === "desc"
-      ? new Date(b.date) - new Date(a.date)
-      : new Date(a.date) - new Date(b.date);
-  });
-
-  const {
-    isOpen: isClaimModalOpen,
-    onOpen: onClaimModalOpen,
-    onClose: onClaimModalClose,
-  } = useDisclosure();
-  const [claimCheckToDelete, setClaimCheckToDelete] = useState(null);
-
-  const handleDeleteClaimCheck = (claimCheck) => {
-    setClaimCheckToDelete(claimCheck);
-    onClaimModalOpen();
-  };
-
-  const confirmDeleteClaimCheck = async () => {
-    try {
-      if (claimCheckToDelete) {
-        // Delete a single claim checks
-        await deleteClaimCheck(claimCheckToDelete.id);
-      } else {
-        // Delete selected claim checks
-        for (const claimCheck of selectedClaimChecks) {
-          await deleteClaimCheck(claimCheck.id);
-        }
-        setSelectedClaimChecks([]);
-      }
-      onClaimModalClose();
-    } catch (error) {
-      console.error("Error deleting claim check(s):", error);
     }
   };
   
@@ -652,21 +475,6 @@ const Profile = () => {
                         <Text>Balance Report</Text>
                       </HStack>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      justifyContent="flex-start"
-                      size="sm"
-                      _hover={{ color: hoverColor }}
-                      _active={{ color: activeColor }}
-                      color={textColor}
-                      width="100%"
-                      onClick={() => navigate("/profile/top-news-outlets")}
-                    >
-                      <HStack>
-                        <FaGlobe />
-                        <Text>Top News Outlets</Text>
-                      </HStack>
-                    </Button>
                   </VStack>
                 </motion.div>
                 )}
@@ -767,7 +575,7 @@ const Profile = () => {
                     p="5" 
                     borderRadius="md"
                     shadow="md"
-                    mb="4" // Add margin-bottom
+                    mb="4"
                   >
                     <Flex justify="space-between" align="center">
                       <Heading mb="4" fontSize={{ base: '3xl', md: '4xl' }}>Welcome, {user.username}</Heading>
@@ -962,99 +770,8 @@ const Profile = () => {
                   transition={{ delay: 0.8, duration: 0.5 }}
                 >
                   <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Bias Insights History</Heading>
-                  <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">
-                      {claimChecks.length > 0 ? (
-                        <>
-                          <Box overflowX="auto">
-                            <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
-                              <Thead>
-                                <Tr>
-                                  <Th width="10%" textAlign="center"><b>ID</b></Th>
-                                  <Th width="45%" textAlign="left"><b>Query</b></Th>
-                                  <Th width="15%" textAlign="center"><b>Rating</b></Th>
-                                  <Th width="10%" textAlign="center"><b>Date</b></Th>
-                                  <Th width="10%" textAlign="center"><b>Results</b></Th>
-                                  <Th width="10%" textAlign="center"><b>Remove</b></Th>
-                                </Tr>
-                              </Thead>
-                              <Tbody as={motion.tbody}>
-                                <AnimatePresence>
-                                  {sortedClaimChecks.slice(0, 5).map((claimCheck) => (
-                                    <motion.tr
-                                      key={claimCheck.id}
-                                      layout
-                                      initial={{ opacity: 0, y: 50 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      exit={{ opacity: 0, y: -50 }}
-                                      transition={{ duration: 0.5 }}
-                                    >
-                                      <Td textAlign="center">#{claimCheck.id}</Td>
-                                      <Td textAlign="justify">{claimCheck.query}</Td>
-                                      <Td textAlign="center">
-                                        <Badge
-                                          colorScheme={getRatingColor(getAggregateRating(claimCheck.ratings))}
-                                          fontSize="md"
-                                          p={2}
-                                          display="flex"
-                                          alignItems="center"
-                                          justifyContent="center"
-                                          gap="2"
-                                          whiteSpace="normal"
-                                        >
-                                          {getRatingIcon(getAggregateRating(claimCheck.ratings))}
-                                          <Text as="span" fontSize="sm">
-                                            {getAggregateRating(claimCheck.ratings)}
-                                          </Text>
-                                        </Badge>
-                                      </Td>
-                                      <Td textAlign="center">{formatDate(claimCheck.date)}</Td>
-                                      <Td textAlign="center">
-                                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                          <Button
-                                            size="sm"
-                                            onClick={() =>
-                                              navigate(`/profile/claim-check-results/${claimCheck.id}`, {
-                                                state: { claimCheck },
-                                              })
-                                            }
-                                          >
-                                            Results
-                                          </Button>
-                                        </motion.div>
-                                      </Td>
-                                      <Td textAlign="center">
-                                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                          <Button size="sm" color={primaryColor} onClick={() => handleDeleteClaimCheck(claimCheck)}>
-                                            <FaTrashAlt />
-                                          </Button>
-                                        </motion.div>
-                                      </Td>
-                                    </motion.tr>
-                                  ))}
-                                </AnimatePresence>
-                              </Tbody>
-                            </Table>
-                          </Box>
-                        </>
-                      ) : (
-                        <motion.div
-                          initial={{ opacity: 0, y: 15 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 15 }}
-                          transition={{ duration: 0.5 }}
-                        >
-                          <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "15vh" }} mb={{ base: "4", md: "0" }}>
-                            <WarningIcon boxSize="6" color="gray.500" mb="2" />
-                            <Text fontSize="lg" color="gray.500" textAlign="center">
-                              No bias history found.
-                            </Text>
-                            <Text fontSize="md" color="gray.400" textAlign="center">
-                              Track how your news consumption evolves over time with Horizon Balance and gain insights into the diversity of perspectives in your reading habits.
-                            </Text>
-                          </Flex>
-                        </motion.div>
-                      )}
-                    </Box>
+                  <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">    
+                  </Box>
                 </motion.div>
               </Flex>
             }
@@ -1072,21 +789,10 @@ const Profile = () => {
               />
             }
           />
-          <Route path="/detection-results/:id" element={<DetectionResults />} />
           <Route
             path="/balance-report"
-            element={<BalanceReport addClaimCheck={addClaimCheck}/>}
+            element={<BalanceReport/>}
             />
-          <Route
-            path="/top-news-outlets"
-            element={
-              <TopNewsOutlets
-                claimChecks={claimChecks}
-                deleteClaimCheck={deleteClaimCheck}
-              />
-            }
-          />
-          <Route path="/claim-check-results/:id" element={<ClaimCheckResults />} />
           <Route path="/account-details" element={<AccountDetails />} />
           <Route
             path="*"
@@ -1119,34 +825,6 @@ const Profile = () => {
               </motion.div>
               <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                 <Button onClick={onInteractionModalClose}>
-                  Cancel
-                </Button>
-              </motion.div>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
-
-        {/* Claim Checks Confirmation Modal */}
-        <Modal isOpen={isClaimModalOpen} onClose={onClaimModalClose} isCentered>
-          <ModalOverlay />
-            <ModalContent
-              width={{ base: "90%"}}
-            >
-            <ModalHeader>Confirm Deletion</ModalHeader>
-            <ModalCloseButton />
-            <ModalBody>
-              {claimCheckToDelete
-                ? "Are you sure you want to delete this claim check?"
-                : "Are you sure you want to delete the selected claim checks?"}
-            </ModalBody>
-            <ModalFooter>
-              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                <Button colorScheme="blue" mr={3} onClick={confirmDeleteClaimCheck}>
-                  Delete
-                </Button>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                <Button onClick={onClaimModalClose}>
                   Cancel
                 </Button>
               </motion.div>

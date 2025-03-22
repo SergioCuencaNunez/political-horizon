@@ -15,9 +15,6 @@ SECRET_KEY = "secret_key"
 # Load POLUSA dataset
 polusa_balanced = pd.read_csv("backend/data/polusa_balanced.csv", header=0)
 
-# Minimum seconds to consider "interested"
-READ_TIME_THRESHOLD = 120
-
 def verify_token(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -57,7 +54,7 @@ def generate_recommendations():
 
         # Fetch only NEW interactions since the last recommendation request
         cursor.execute("""
-            SELECT id, interaction_type, read_time_seconds 
+            SELECT id, interaction_type 
             FROM user_interactions 
             WHERE user_id = ? AND interaction_timestamp > ?
         """, (user_id, last_recommendation_time))
@@ -65,16 +62,7 @@ def generate_recommendations():
         interactions = cursor.fetchall()
         recommendations = []
 
-        for article_id, interaction_type, read_time_seconds in interactions:
-            if interaction_type == "like":
-                interaction_type_final = "like"
-            elif interaction_type == "read" and read_time_seconds >= READ_TIME_THRESHOLD:
-                interaction_type_final = "read"
-            elif interaction_type == "dislike" or read_time_seconds < READ_TIME_THRESHOLD:
-                interaction_type_final = "dislike"
-            else:
-                continue
-
+        for article_id, interaction_type in interactions:
             cursor.execute("SELECT headline FROM news_articles WHERE id = ?", (article_id,))
             source_headline = cursor.fetchone()
             source_headline = source_headline[0] if source_headline else "an article you engaged with"
@@ -85,7 +73,7 @@ def generate_recommendations():
                 for _, rec in recommended_articles.iterrows():
                     recommendations.append({
                         "id": int(rec["id"]),
-                        "interaction_type": interaction_type_final,
+                        "interaction_type": interaction_type,
                         "source_article_id": article_id,
                         "source_article_headline": source_headline,
                         "date_publish": rec["date_publish"],

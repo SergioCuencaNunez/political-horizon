@@ -87,7 +87,6 @@ const BrowseFeed = () => {
   const [showTransparency, setShowTransparency] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const { isOpen: isSpinnerOpen, onOpen: onSpinnerOpen, onClose: onSpinnerClose } = useDisclosure();
-  const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
   const { isOpen: isErrorOpen, onOpen: onErrorOpen, onClose: onErrorClose } = useDisclosure();
 
   const toggleTransparency = () => setShowTransparency(!showTransparency);
@@ -100,6 +99,7 @@ const BrowseFeed = () => {
   }, []);
 
   useEffect(() => {
+    const READ_TIME_THRESHOLD = 120;
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         const startTime = localStorage.getItem("read_start_time");
@@ -108,10 +108,12 @@ const BrowseFeed = () => {
         if (startTime && newsId) {
           const elapsedTime = Math.floor((Date.now() - parseInt(startTime)) / 1000);
 
-          // Send read time to backend
-          handleInteraction(newsId, "read", elapsedTime);
+          if (elapsedTime >= READ_TIME_THRESHOLD) {
+            handleInteraction(newsId, "read", elapsedTime);
+          } else {
+            handleInteraction(newsId, "dislike", elapsedTime);
+          }
 
-          // Clear stored values
           localStorage.removeItem("read_start_time");
           localStorage.removeItem("read_news_id");
         }
@@ -238,7 +240,7 @@ const BrowseFeed = () => {
       const prevInteraction = interactions[id];
       const token = localStorage.getItem("token");
   
-      // 1. Toggle off (same interaction clicked again)
+      // Toggle off (same interaction clicked again)
       if (prevInteraction === newInteractionType) {
         // DELETE interaction
         await fetch(`${BACKEND_URL_DB}/user/interactions/${id}`, {
@@ -258,7 +260,7 @@ const BrowseFeed = () => {
         return;
       }
   
-      // 2. Remove previous (if exists and is different)
+      // Remove previous (if exists and is different)
       if (prevInteraction && prevInteraction !== newInteractionType) {
         await fetch(`${BACKEND_URL_DB}/user/interactions/${id}`, {
           method: "DELETE",
@@ -268,7 +270,7 @@ const BrowseFeed = () => {
         });
       }
   
-      // 3. POST new interaction
+      // POST new interaction
       await fetch(`${BACKEND_URL_DB}/user/interactions`, {
         method: "POST",
         headers: {
@@ -431,30 +433,37 @@ const getPoliticalIcon = (leaning) => {
             </HStack>
           </Flex>
           <Box borderBottom="1px" borderColor="gray.300" mb="4"></Box>
-          <Text mb="4" textAlign="justify">
-            {useBreakpointValue({
-              base: "Your recommendations are personalized based on your reading history while ensuring a diverse and balanced perspective, helping you explore different viewpoints.",
-              lg: "Your recommendations are personalized based on your reading history while ensuring a diverse and balanced perspective, helping you explore different viewpoints and stay informed with a well-rounded news feed.",
-            })}
-          </Text>
-          {userStatus === "new" && <Text mb="4" fontSize="sm" color="gray.500">These are your first 10 articles to help us tune your interests.</Text>}
-          <Flex gap="4" mb="6">
-            <Input placeholder="Search news..." value={filters.search} onChange={(e) => updateFilters({ search: e.target.value })} />
-            <Select value={filters.politicalLeaning} onChange={(e) => updateFilters({ politicalLeaning: e.target.value })}>
-              <option value="All">All</option>
-              <option value="Right">Right</option>
-              <option value="Center">Center</option>
-              <option value="Left">Left</option>
-            </Select>
-            <Select value={filters.sortBy} onChange={(e) => updateFilters({ sortBy: e.target.value })}>
-              <option value="newest">Date (Newest First)</option>
-              <option value="oldest">Date (Oldest First)</option>
-              <option value="title-asc">Title (A-Z)</option>
-              <option value="title-desc">Title (Z-A)</option>
-              <option value="outlet-asc">Outlet (A-Z)</option>
-              <option value="outlet-desc">Outlet (Z-A)</option>
-            </Select>
-          </Flex>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
+            <Text mb="4" textAlign="justify">
+              {useBreakpointValue({
+                base: "Your recommendations are personalized based on your reading history while ensuring a diverse and balanced perspective, helping you explore different viewpoints.",
+                lg: "Your recommendations are personalized based on your reading history while ensuring a diverse and balanced perspective, helping you explore different viewpoints and stay informed with a well-rounded news feed.",
+              })}
+            </Text>
+            {userStatus === "new" && <Text mb="4" fontSize="sm" color="gray.500">These are your first 10 articles to help us tune your interests.</Text>}
+            <Flex gap="4" mb="6">
+              <Input placeholder="Search news..." value={filters.search} onChange={(e) => updateFilters({ search: e.target.value })} />
+              <Select value={filters.politicalLeaning} onChange={(e) => updateFilters({ politicalLeaning: e.target.value })}>
+                <option value="All">All</option>
+                <option value="Right">Right</option>
+                <option value="Center">Center</option>
+                <option value="Left">Left</option>
+              </Select>
+              <Select value={filters.sortBy} onChange={(e) => updateFilters({ sortBy: e.target.value })}>
+                <option value="newest">Date (Newest First)</option>
+                <option value="oldest">Date (Oldest First)</option>
+                <option value="title-asc">Title (A-Z)</option>
+                <option value="title-desc">Title (Z-A)</option>
+                <option value="outlet-asc">Outlet (A-Z)</option>
+                <option value="outlet-desc">Outlet (Z-A)</option>
+              </Select>
+            </Flex>
+          </motion.div>
           
           <motion.div
             key={animationKey}
@@ -472,7 +481,7 @@ const getPoliticalIcon = (leaning) => {
                   whileHover={{ scale: 1.025 }}
                   whileTap={{ scale: 0.95 }}
                   transition={{
-                    opacity: { duration: 0.5, delay: 0.1 * index },
+                    opacity: { duration: 0.5, delay: 0.2 * index },
                     scale: { type: "spring", stiffness: 300, damping: 20 },
                   }}
                 >
@@ -746,30 +755,6 @@ const getPoliticalIcon = (leaning) => {
                 <Spinner size="xl" />
                 <Text mt="4">Generating Recommendations... Please Wait.</Text>
               </ModalBody>
-            </ModalContent>
-          </Modal>
-
-          {/* Alert Modal */}
-          <Modal isOpen={isAlertOpen} onClose={onAlertClose} isCentered>
-            <ModalOverlay />
-              <ModalContent
-                width={{ base: "90%"}}
-              >
-              <ModalHeader>Missing Information</ModalHeader>
-              <ModalCloseButton />
-              <ModalBody>
-                Please fill in both the title and content fields to proceed with detecting fake news. 
-              </ModalBody>
-              <ModalFooter>
-                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                  <Button
-                    size="md"
-                    onClick={onAlertClose}
-                  >
-                    Close
-                  </Button>
-                </motion.div>
-              </ModalFooter>
             </ModalContent>
           </Modal>
 

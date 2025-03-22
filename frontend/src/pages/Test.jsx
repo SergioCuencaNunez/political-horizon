@@ -1,126 +1,123 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   HStack,
   Box,
   Flex,
   Heading,
   Text,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Badge,
   Button,
   IconButton,
-  Checkbox,
-  useDisclosure,
+  Stat,
+  StatLabel,
+  StatNumber,
+  SimpleGrid,
   useColorMode,
   useColorModeValue,
   useBreakpointValue,
+  Collapse,
   Modal,
   ModalOverlay,
   ModalContent,
-  ModalHeader,
-  ModalFooter,
   ModalBody,
+  ModalFooter,
+  ModalHeader,
   ModalCloseButton,
+  Spinner,
+  useDisclosure,
 } from "@chakra-ui/react";
-import { FaTrashAlt } from "react-icons/fa";
-import { SunIcon, MoonIcon, ChevronDownIcon, ChevronUpIcon, WarningIcon, WarningTwoIcon, CheckCircleIcon } from "@chakra-ui/icons";
+import { SunIcon, MoonIcon, InfoOutlineIcon } from "@chakra-ui/icons";
+import GaugeChart from "react-gauge-chart";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
-const primaryColor = "#4dcfaf";
+const primaryColorLight = '#c6001e';
+const primaryColorDark = '#cf2640';
+const primaryHoverLight = '#b0001a';
+const primaryHoverDark = '#d83a52';
+const primaryActiveLight = '#970016';
+const primaryActiveDark = '#e14f64';
 
-import logoDetectBright from "../assets/logo-detect-bright.png";
-import logoDetectDark from "../assets/logo-detect-dark.png";
+import logoBalanceBright from "../assets/logo-balance-bright.png";
+import logoBalanceDark from "../assets/logo-balance-dark.png";
 
-const MyNewsDetections = ({ detections, deleteDetection }) => {
+const BalanceReport = () => {
   const navigate = useNavigate();
+  // For development only
+  const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:5001`;
 
-  const logo = useColorModeValue(logoDetectBright, logoDetectDark);
-  const logoHeight = useBreakpointValue({ base: '40px', md: '45px' });
+  // For production
+  // const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+  
+  const logo = useColorModeValue(logoBalanceBright, logoBalanceDark);
+  const logoHeight = useBreakpointValue({ base: '28px', md: '33px' });
+
+  const primaryColor = useColorModeValue(primaryColorLight, primaryColorDark);
   const cardBg = useColorModeValue("white", "gray.700");
+  const textColor = useColorModeValue("black", "white");
   
+  const hoverColor = useColorModeValue(primaryHoverLight, primaryHoverDark);
+  const activeColor = useColorModeValue(primaryActiveLight, primaryActiveDark);
   const { colorMode, toggleColorMode } = useColorMode();
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const [detectionToDelete, setDetectionToDelete] = useState(null);
-  const [selectedDetections, setSelectedDetections] = useState([]);
-  const [sortOrder, setSortOrder] = useState("desc");
 
-  const handleDelete = (detection) => {
-    setDetectionToDelete(detection);
-    onOpen();
-  };
+  const [loading, setLoading] = useState(true);
+  const [leaning, setLeaning] = useState(null);
+  const [distribution, setDistribution] = useState({ LEFT: 0, CENTER: 0, RIGHT: 0 });
+  const [metrics, setMetrics] = useState({ entropy: 0, kl_divergence: 0 });
 
-  const confirmDelete = async () => {
-    try {
-      if (detectionToDelete) {
-        // Delete a single detection
-        await deleteDetection(detectionToDelete.id);
-      } else {
-        // Delete selected detections
-        for (const detection of selectedDetections) {
-          await deleteDetection(detection.id);
-        }
-        setSelectedDetections([]);
+  const [showTransparency, setShowTransparency] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const { isOpen: isSpinnerOpen, onOpen: onSpinnerOpen, onClose: onSpinnerClose } = useDisclosure();
+  const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
+  const { isOpen: isErrorOpen, onOpen: onErrorOpen, onClose: onErrorClose } = useDisclosure();
+
+  const toggleTransparency = () => setShowTransparency(!showTransparency);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+
+        const [leaningRes, distributionRes, metricsRes] = await Promise.all([
+          fetch(`${BACKEND_URL}/user/balance-report`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${BACKEND_URL}/user/exposure-distribution`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${BACKEND_URL}/user/diversity-metrics`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        const leaningData = await leaningRes.json();
+        const distributionData = await distributionRes.json();
+        const metricsData = await metricsRes.json();
+        console.log(leaningData, distributionData, metricsData);
+
+        setLeaning(leaningData.political_leaning);
+        setDistribution(distributionData);
+        setMetrics(metricsData);
+      } catch (error) {
+        console.error("Failed to fetch balance data:", error);
+      } finally {
+        setLoading(false);
       }
-      onClose();
-    } catch (error) {
-      console.error("Error deleting detection(s):", error);
-    }
-  };
+    };
 
-  const handleSelectAll = (isChecked) => {
-    if (isChecked) {
-      setSelectedDetections(detections);
-    } else {
-      setSelectedDetections([]);
-    }
-  };
+    fetchData();
+  }, []);
 
-  const handleSelectDetection = (detection, isChecked) => {
-    if (isChecked) {
-      setSelectedDetections((prev) => [...prev, detection]);
-    } else {
-      setSelectedDetections((prev) => prev.filter((item) => item.id !== detection.id));
-    }
-  };
+  const gaugePercent = {
+    LEFT: 0.15,
+    CENTER: 0.5,
+    RIGHT: 0.85,
+  }[leaning] || 0.5;
 
-  const formatDate = (isoString) => {
-    const date = new Date(isoString);
-    const options = { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" };
-    return date.toLocaleDateString("en-GB", options).replace(",", "");
-  };
-
-  const green = useColorModeValue("green.600", "green.300");
-  const orange = useColorModeValue("orange.600", "orange.300");
-  const gray = useColorModeValue("gray.600", "gray.300");
-  const red = useColorModeValue("red.600", "red.300");
-  
-  const sortedDetections = [...detections].sort((a, b) => {
-    return sortOrder === "desc"
-      ? new Date(b.date) - new Date(a.date)
-      : new Date(a.date) - new Date(b.date);
-  });
-
-  const toggleSortOrder = () => {
-    setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
-  };
-
-  const getPredictionColor = (prediction) => {
-    if (prediction === "Fake") return "red";
-    if (prediction === "True") return "green";
-    return "orange";
-  };
-  
-  const getPredictionIcon = (prediction) => {
-    if (prediction === "Fake") return <WarningTwoIcon color="red.500" />;
-    if (prediction === "True") return <CheckCircleIcon color="green.500" />;
-    return <WarningIcon color="orange.500" />;
-  };
+  const gaugeColor = {
+    LEFT: ["#0066cc"],
+    CENTER: ["#cccc00"],
+    RIGHT: ["#cc0000"],
+  }[leaning] || ["#cccccc"];
 
   return (
     <motion.div
@@ -132,20 +129,20 @@ const MyNewsDetections = ({ detections, deleteDetection }) => {
       <Box px={{ md: 4 }} py={{ md: 6 }}>
         <Flex direction="column" bg={cardBg} p={8} borderRadius="md" shadow="md">
           <Flex justify="space-between" align="center" mb="4">
-            <Heading fontSize={{ base: '3xl', md: '4xl' }}>My News Detections</Heading>                    
-            <HStack spacing="4" display={{ base: "none", md: "none", lg: "flex" }}>
-               <motion.img
-                  src={logo}
-                  alt="Detect Logo"
-                  style={{ height: logoHeight, width: 'auto'}}
-                  initial={{ scale: 0.9 }}
-                  animate={{ scale: 1 }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 260,
-                    damping: 20,
-                  }}
-                />
+            <Heading fontSize={{ base: '3xl', md: '4xl' }}>Balance Report</Heading>          
+            <HStack spacing="4" display={{ base: "none", lg: "flex" }}>
+              <motion.img
+                src={logo}
+                alt="Horizon Balance Logo"
+                style={{ height: logoHeight, width: 'auto'}}
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 260,
+                  damping: 20,
+                }}
+              />
               <IconButton
                 aria-label="Toggle theme"
                 icon={colorMode === "light" ? <MoonIcon /> : <SunIcon />}
@@ -166,7 +163,7 @@ const MyNewsDetections = ({ detections, deleteDetection }) => {
                 <Box
                   as="img"
                   src={logo}
-                  alt="Detect Logo"
+                  alt="Horizon Balance Logo"
                   maxHeight={logoHeight}
                   maxWidth="120px"
                   objectFit="contain"
@@ -175,173 +172,138 @@ const MyNewsDetections = ({ detections, deleteDetection }) => {
             </HStack>
           </Flex>
           <Box borderBottom="1px" borderColor="gray.300" mb="4"></Box>
-          {detections.length > 0 ? (
-            <>
-              <Box overflowX="auto">
-                <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
-                  <Thead>
-                    <Tr>
-                      <Th width="10%" textAlign="center"><b>ID</b></Th>
-                      <Th width="35%" textAlign="left"><b>Title</b></Th>
-                      <Th width="15%" textAlign="center"><b>Prediction</b></Th>
-                      <Th width="10%" textAlign="center">
-                        <Flex align="center" justify="center">
-                          <b>Date</b>
-                          <IconButton
-                            aria-label="Toggle Sort Order"
-                            icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
-                            size="xs"
-                            variant="ghost"
-                            onClick={toggleSortOrder}
-                            ml="1"
-                          />
-                        </Flex>
-                      </Th>
-                      <Th width="10%" textAlign="center"><b>Results</b></Th>
-                      <Th width="10%" textAlign="center"><b>Remove</b></Th>
-                      <Th width="10%" textAlign="center"><b>Select</b></Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody as={motion.tbody}>
-                    <AnimatePresence>
-                      {sortedDetections.map((detection) => (
-                        <motion.tr
-                          key={detection.id}
-                          layout
-                          initial={{ opacity: 0, y: 50 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -50 }}
-                          transition={{ duration: 0.5 }}
-                        >
-                          <Td textAlign="center">#{detection.id}</Td>
-                          <Td textAlign="justify">{detection.title}</Td>
-                          <Td textAlign="center">
-                            <Badge
-                              colorScheme={getPredictionColor(detection.final_prediction)}
-                              fontSize="md"
-                              p={2}
-                              display="flex"
-                              alignItems="center"
-                              justifyContent="center"
-                              gap="2"
-                              whiteSpace="normal"
-                            >
-                              {getPredictionIcon(detection.final_prediction)}
-                              <Text as="span" fontSize="md">
-                                {detection.final_prediction}
-                              </Text>
-                            </Badge>
-                          </Td>
-                          <Td textAlign="center">{formatDate(detection.date)}</Td>
-                          <Td textAlign="center">
-                            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  navigate(`/profile/detection-results/${detection.id}`, {
-                                    state: { detection },
-                                  })
-                                }
-                              >
-                                Results
-                              </Button>
-                            </motion.div>
-                          </Td>
-                          <Td textAlign="center">
-                            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                              <Button size="sm" color={primaryColor} onClick={() => handleDelete(detection)}>
-                                <FaTrashAlt />
-                              </Button>
-                            </motion.div>
-                          </Td>
-                          <Td textAlign="center">
-                            <Checkbox
-                              isChecked={selectedDetections.some((item) => item.id === detection.id)}
-                              onChange={(e) => handleSelectDetection(detection, e.target.checked)}
-                            />
-                          </Td>
-                        </motion.tr>
-                      ))}
-                    </AnimatePresence>
-                  </Tbody>
-                </Table>
-              </Box>
-              <Flex justify="space-between" align="center" height="40px">
-                <Checkbox
-                  isChecked={selectedDetections.length === detections.length}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
-                >
-                  Select All
-                </Checkbox>
-                <AnimatePresence>
-                  {selectedDetections.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8, x: 0 }}
-                      animate={{
-                        opacity: 1,
-                        scale: 1,
-                      }}
-                      exit={{ opacity: 0, scale: 0.8, x: 0 }}
-                      transition={{ duration: 0.3 }}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <Button
-                        colorScheme="red"
-                        onClick={() => {
-                          setDetectionToDelete(null);
-                          onOpen();
-                        }}
-                        isDisabled={selectedDetections.length === 0}
-                      >
-                        Delete Selected
-                      </Button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Flex>
-            </>
+          
+          {loading ? (
+            <Flex justify="center" align="center" minH="200px">
+              <Spinner size="xl" />
+            </Flex>
           ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 15 }}
-              transition={{ duration: 0.5 }}
-            >
-              <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "15vh" }}>
-                <WarningIcon boxSize="6" color="gray.500" mb="2" />
-                <Text fontSize="lg" color="gray.500" textAlign="center">
-                  No detections found.
-                </Text>
-                <Text fontSize="md" color="gray.400" textAlign="center">
-                  Start detecting fake news with FactGuard Detect by analyzing articles and preventing misinformation today.
-                </Text>
+            <>
+              <Text fontSize="lg" mb="4" textAlign="justify">
+                Based on your recent news interactions, here's how balanced your political exposure is.
+              </Text>
+
+              <Flex justify="center" mb="6">
+                <GaugeChart
+                  id="gauge-chart"
+                  nrOfLevels={20}
+                  percent={gaugePercent}
+                  colors={gaugeColor}
+                  arcWidth={0.3}
+                  textColor={textColor}
+                  formatTextValue={() => `${leaning || "Unknown"}`}
+                />
               </Flex>
-            </motion.div>
+
+              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={6}>
+                <Stat>
+                  <StatLabel>Left Exposure</StatLabel>
+                  <StatNumber>{(distribution.LEFT * 100).toFixed(1)}%</StatNumber>
+                </Stat>
+                <Stat>
+                  <StatLabel>Center Exposure</StatLabel>
+                  <StatNumber>{(distribution.CENTER * 100).toFixed(1)}%</StatNumber>
+                </Stat>
+                <Stat>
+                  <StatLabel>Right Exposure</StatLabel>
+                  <StatNumber>{(distribution.RIGHT * 100).toFixed(1)}%</StatNumber>
+                </Stat>
+              </SimpleGrid>
+
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
+                <Stat>
+                  <StatLabel>Shannon Entropy</StatLabel>
+                  <StatNumber>{metrics.shannon_entropy.toFixed(3)}</StatNumber>
+                </Stat>
+                <Stat>
+                  <StatLabel>KL Divergence (vs ideal)</StatLabel>
+                  <StatNumber>{metrics.kl_divergence.toFixed(3)}</StatNumber>
+                </Stat>
+              </SimpleGrid>
+            </>
           )}
 
-          {/* Confirmation Modal */}
-          <Modal isOpen={isOpen} onClose={onClose} isCentered>
+          {/* Transparency Section */}
+          <Flex direction="column">
+            <Flex align="center" cursor="pointer" onClick={toggleTransparency} color={useColorModeValue("gray.500", "gray.400")}>
+              <InfoOutlineIcon />
+              <Text fontSize="sm" fontWeight="bold" ml={2}>
+                More Information and Details
+              </Text>
+            </Flex>
+            <Collapse in={showTransparency}>
+              <Box mt={4} p={4} borderRadius="md" bg={useColorModeValue("gray.50", "gray.800")}>
+                <Text fontSize="sm" textAlign="justify">
+                  {useBreakpointValue({
+                    base: "FactGuard Verify uses the Google Fact Check API to validate claims and provide reliable results.",
+                    lg: "FactGuard Verify integrates directly with the Google Fact Check Tools API to validate the accuracy of claims. By leveraging a comprehensive database of verified information from trusted fact-checking organizations, it ensures users receive precise and reliable results when assessing the truthfulness of claims.",
+                  })}
+                </Text>
+                <Text mt={2} fontSize="sm" textAlign="justify">
+                  {useBreakpointValue({
+                    base: "The system is continuously improved to enhance reliability and user experience.",
+                    lg: "This integration with the Google Fact Check Tools API ensures robust claim validation, offering users a reliable tool for uncovering the truth. FactGuard Verify is continuously improved to provide enhanced reliability, transparency, and a seamless user experience in combating misinformation.",
+                  })}
+                </Text>
+              </Box>
+            </Collapse>
+          </Flex>
+
+          {/* Spinner Modal */}
+          <Modal isOpen={isSpinnerOpen} onClose={onSpinnerClose} closeOnOverlayClick={false} closeOnEsc={false} isCentered>
             <ModalOverlay />
               <ModalContent
                 width={{ base: "90%"}}
               >
-              <ModalHeader>Confirm Deletion</ModalHeader>
+              <ModalBody textAlign="center" py="6">
+                <Spinner size="xl" />
+                <Text mt="4">Verifying Query... Please Wait.</Text>
+              </ModalBody>
+            </ModalContent>
+          </Modal>
+
+          {/* Alert Modal */}
+          <Modal isOpen={isAlertOpen} onClose={onAlertClose} isCentered>
+            <ModalOverlay />
+              <ModalContent
+                width={{ base: "90%"}}
+              >
+              <ModalHeader>Missing Information</ModalHeader>
               <ModalCloseButton />
               <ModalBody>
-                {detectionToDelete
-                  ? "Are you sure you want to delete this detection?"
-                  : "Are you sure you want to delete the selected detections?"}
+                Please input the query in the provided field to proceed with verification. 
               </ModalBody>
               <ModalFooter>
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                  <Button colorScheme="red" mr={3} onClick={confirmDelete}>
-                    Delete
+                  <Button
+                    size="md"
+                    onClick={onAlertClose}
+                  >
+                    Close
                   </Button>
                 </motion.div>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+
+          {/* Error Modal */}
+          <Modal isOpen={isErrorOpen} onClose={onErrorClose} isCentered>
+            <ModalOverlay />
+              <ModalContent
+                width={{ base: "90%"}}
+              >
+              <ModalHeader>Error</ModalHeader>
+              <ModalCloseButton />
+              <ModalBody>
+                <Text>{errorMessage}</Text>
+              </ModalBody>
+              <ModalFooter>
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                  <Button onClick={onClose}>
-                    Cancel
+                  <Button
+                    size="md"
+                    onClick={onErrorClose}
+                  >
+                    Close
                   </Button>
                 </motion.div>
               </ModalFooter>
@@ -353,4 +315,4 @@ const MyNewsDetections = ({ detections, deleteDetection }) => {
   );
 };
 
-export default MyNewsDetections;
+export default BalanceReport;

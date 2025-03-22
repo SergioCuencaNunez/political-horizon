@@ -411,147 +411,216 @@ app.get("/articles/recommended", verifyToken, (req, res) => {
   });
 });
 
-// Get all claims for a user
-app.get("/claims", verifyToken, (req, res) => {
-  const query = `
-    SELECT id, query, claims, ratings, links, language, date 
-    FROM claims 
-    WHERE user_id = ? 
-    ORDER BY date DESC
+// Get the user's balance report
+app.get("/user/balance-report", verifyToken, (req, res) => {
+  const userId = req.user.id;
+
+  const interactionsQuery = `
+    SELECT id, read_time_seconds, interaction_type
+    FROM user_interactions
+    WHERE user_id = ? AND (interaction_type = 'read' OR interaction_type = 'like')
   `;
 
-  db.all(query, [req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: "Failed to fetch claims." });
+  db.all(interactionsQuery, [userId], (err, interactionRows) => {
+    if (err) return res.status(500).json({ error: "Failed to fetch user interactions" });
 
-    const parsedRows = rows.map((row) => ({
-      ...row,
-      claims: JSON.parse(row.claims),
-      ratings: JSON.parse(row.ratings),
-      links: JSON.parse(row.links),
-    }));
-
-    res.json(parsedRows);
-  });
-});
-
-// Get detection by ID
-app.get("/claims/:id", verifyToken, (req, res) => {
-  const { id } = req.params;
-
-  const query = "SELECT * FROM claims WHERE id = ? AND user_id = ?";
-  db.get(query, [id, req.user.id], (err, row) => {
-    if (err) return res.status(500).json({ error: "Failed to fetch claim" });
-
-    if (!row) {
-      return res.status(404).json({ error: "Claim not found" });
+    if (interactionRows.length === 0) {
+      return res.json({
+        political_leaning: "N/A",
+        interactions: { LEFT: 0, CENTER: 0, RIGHT: 0 },
+        unique_outlets_read: 0,
+        most_frequented_sources: [],
+        avg_read_time: { LEFT: "N/A", CENTER: "N/A", RIGHT: "N/A" },
+        reading_behavior_message: "No reading data available.",
+        shannon_entropy: "N/A",
+        kl_divergence: "N/A",
+        balance_score: 0,
+        balance_message: "Not enough data to determine balance.",
+      });
     }
 
-    // Parse JSON fields before sending the response
-    const parsedRow = {
-      ...row,
-      claims: JSON.parse(row.claims),
-      ratings: JSON.parse(row.ratings),
-      links: JSON.parse(row.links),
-    };
+    // Extract article IDs
+    const articleIds = interactionRows.map(row => row.id);
+    
+    // Query to fetch political leaning and outlet info from news_articles
+    const articlesQuery = `
+      SELECT id, political_leaning, outlet
+      FROM news_articles
+      WHERE id IN (${articleIds.map(() => "?").join(",")})
+    `;
 
-    res.json(parsedRow);
-  });
-});
+    db.all(articlesQuery, articleIds, (err, articleRows) => {
+      if (err) return res.status(500).json({ error: "Failed to fetch article details" });
 
-// Generate a FactGuard Verify ID
-const generateClaimsID = () => {
-  const randomNumber = Math.floor(Math.random() * 100);
-  const formattedNumber = String(randomNumber).padStart(2, '0');
-  return `FGV${formattedNumber}`;
-};
+      const counts = { LEFT: 0, CENTER: 0, RIGHT: 0 };
+      const likesDislikes = { LEFT: { likes: 0, dislikes: 0 }, CENTER: { likes: 0, dislikes: 0 }, RIGHT: { likes: 0, dislikes: 0 } };
+      const totalReadTime = { LEFT: 0, CENTER: 0, RIGHT: 0 };
+      const readCounts = { LEFT: 0, CENTER: 0, RIGHT: 0 };
+      const outletsCount = {};
+      const outlets = new Set();
+      const fullyReadCount = { LEFT: 0, CENTER: 0, RIGHT: 0 };
+      const quickReadCount = { LEFT: 0, CENTER: 0, RIGHT: 0 };
+      
+      // Map articles by ID for quick lookup
+      const articleMap = Object.fromEntries(articleRows.map(article => [article.id, article]));
 
-// Add a new claim
-app.post("/claims", verifyToken, (req, res) => {
-  const { query, claims, ratings, links, language, date } = req.body;
+      // Process interactions
+      interactionRows.forEach(row => {
+        const article = articleMap[row.id];
+        if (!article) return;
 
-  if (!query || !claims || !ratings || !links || !language || !date) {
-    return res.status(400).json({ error: "All fields are required." });
-  }
+        const leaning = article.political_leaning;
+        const readTime = row.read_time_seconds;
+        const interactionType = row.interaction_type;
 
-  if (claims.length > 3 || ratings.length > 3 || links.length > 3) {
-    return res.status(400).json({ error: "A maximum of 3 claims, ratings, and links are allowed per query." });
-  }
+        if (interactionType === "like") {
+          likesDislikes[leaning].likes += 1;
+        } else if (interactionType === "dislike") {
+          likesDislikes[leaning].dislikes += 1;
+          return;
+        }
 
-  const customID = generateClaimsID();
+        // Count total interactions
+        if (leaning) counts[leaning] += 1;
 
-  const insertQuery = `
-    INSERT INTO claims (id, user_id, query, claims, ratings, links, language, date) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `;
+        // Count read times ONLY for 'read' interactions
+        if (interactionType === "read" && readTime > 0) {
+          totalReadTime[leaning] += readTime;
+          readCounts[leaning] += 1;
+          if (readTime >= 120) fullyReadCount[leaning]++;
+          else if (readTime < 120 && readTime > 60) quickReadCount[leaning]++;
+        }
 
-  const checkQuery = `
-    SELECT 1 FROM claims WHERE user_id = ? AND query = ?
-  `;
+        if (article.outlet) {
+          outlets.add(article.outlet);
+          outletsCount[article.outlet] = (outletsCount[article.outlet] || 0) + 1;
+        }
+      });
 
-  db.get(checkQuery, [req.user.id, query], (err, row) => {
-    if (err) return res.status(500).json({ error: "Database error" });
+      // Smoothing to avoid zero probs
+      const epsilon = 1e-10;
+      const total = counts.LEFT + counts.CENTER + counts.RIGHT;
+      const probs = {
+        LEFT: total > 0 ? counts.LEFT / total : epsilon,
+        CENTER: total > 0 ? counts.CENTER / total : epsilon,
+        RIGHT: total > 0 ? counts.RIGHT / total : epsilon
+      };
 
-    if (row) {
-      return res.status(409).json({ error: "Duplicate query. Already exists." });
-    }
+      // Apply epsilon if any prob is 0
+      Object.keys(probs).forEach(key => {
+        if (probs[key] === 0) probs[key] = epsilon;
+      });
 
-    db.run(
-      insertQuery,
-      [
-        customID,
-        req.user.id,
-        query,
-        JSON.stringify(claims),
-        JSON.stringify(ratings),
-        JSON.stringify(links),
-        language,
-        date,
-      ],
-      function (err) {
-        if (err) return res.status(500).json({ error: "Failed to add claims." });
+      // Normalize to ensure sum == 1 after smoothing
+      const sumProbs = probs.LEFT + probs.CENTER + probs.RIGHT;
+      probs.LEFT /= sumProbs;
+      probs.CENTER /= sumProbs;
+      probs.RIGHT /= sumProbs;
 
-        res.status(201).json({
-          id: customID,
-          query,
-          claims,
-          ratings,
-          links,
-          language,
-          date,
-        });
+      // Shannon Entropy
+      const shannonEntropy = -(
+        probs.LEFT * Math.log2(probs.LEFT) +
+        probs.CENTER * Math.log2(probs.CENTER) +
+        probs.RIGHT * Math.log2(probs.RIGHT)
+      );
+
+      // KL Divergence from uniform distribution
+      const uniform = 1 / 3;
+      const klDivergence = (
+        probs.LEFT * Math.log2(probs.LEFT / uniform) +
+        probs.CENTER * Math.log2(probs.CENTER / uniform) +
+        probs.RIGHT * Math.log2(probs.RIGHT / uniform)
+      );
+
+      // Most Frequented Sources
+      const sortedOutlets = Object.entries(outletsCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([outlet, count]) => ({ outlet, count }));
+
+      // Source Diversity Score
+      const numUniqueOutlets = outlets.size;
+      const diversityFactor = ['LEFT', 'CENTER', 'RIGHT'].filter(k => counts[k] > 0).length / 3;
+      const maxGroupCount = Math.max(counts.LEFT, counts.CENTER, counts.RIGHT);
+      const exposureFactor = 1 - (maxGroupCount / total);
+      const balanceScore = (diversityFactor * exposureFactor).toFixed(3);
+      
+      // Engagement Score
+      const totalReadCount = {
+        LEFT: fullyReadCount.LEFT + quickReadCount.LEFT,
+        CENTER: fullyReadCount.CENTER + quickReadCount.CENTER,
+        RIGHT: fullyReadCount.RIGHT + quickReadCount.RIGHT,
+      };
+      const fullyReadPercentage = {
+        LEFT: totalReadCount.LEFT > 0 ? ((fullyReadCount.LEFT / totalReadCount.LEFT) * 100).toFixed(1) : "0.0",
+        CENTER: totalReadCount.CENTER > 0 ? ((fullyReadCount.CENTER / totalReadCount.CENTER) * 100).toFixed(1) : "0.0",
+        RIGHT: totalReadCount.RIGHT > 0 ? ((fullyReadCount.RIGHT / totalReadCount.RIGHT) * 100).toFixed(1) : "0.0",
+      };
+      
+      const quickReadPercentage = {
+        LEFT: totalReadCount.LEFT > 0 ? ((quickReadCount.LEFT / totalReadCount.LEFT) * 100).toFixed(1) : "0.0",
+        CENTER: totalReadCount.CENTER > 0 ? ((quickReadCount.CENTER / totalReadCount.CENTER) * 100).toFixed(1) : "0.0",
+        RIGHT: totalReadCount.RIGHT > 0 ? ((quickReadCount.RIGHT / totalReadCount.RIGHT) * 100).toFixed(1) : "0.0",
+      };
+      const engagementScore = totalReadCount > 0 ? ((fullyReadCount / totalReadCount) * 100).toFixed(1) : "0.0";
+      
+      // Compute **Average Read Time (Only for Read Articles)**
+      const avgReadTime = {
+        LEFT: readCounts.LEFT > 0 ? (totalReadTime.LEFT / readCounts.LEFT).toFixed(1) : "N/A",
+        CENTER: readCounts.CENTER > 0 ? (totalReadTime.CENTER / readCounts.CENTER).toFixed(1) : "N/A",
+        RIGHT: readCounts.RIGHT > 0 ? (totalReadTime.RIGHT / readCounts.RIGHT).toFixed(1) : "N/A"
+      };
+
+      // **Reading Engagement Insight**
+      let readingBehaviorMessage = "Your reading time is balanced across political leanings.";
+      if (readCounts.LEFT > readCounts.CENTER && readCounts.LEFT > readCounts.RIGHT) {
+        readingBehaviorMessage = "You dedicate more reading time to left-leaning articles. Exploring other viewpoints could enrich your perspective.";
+      } else if (readCounts.RIGHT > readCounts.CENTER && readCounts.RIGHT > readCounts.LEFT) {
+        readingBehaviorMessage = "You spend more time on right-leaning articles. Consider allocating time to center or left viewpoints for balance.";
+      } else if (readCounts.CENTER > readCounts.LEFT && readCounts.CENTER > readCounts.RIGHT) {
+        readingBehaviorMessage = "You invest most of your reading time on center-leaning articles. Engaging with left and right perspectives may offer broader context.";
       }
-    );
-  });
-});
+      
+      // **Balance Message**
+      let balanceMessage = "You're consuming a diverse mix of political perspectives. Well done!";
+      if (balanceScore < 0.3) {
+        const dominantLeaning = 
+          counts.LEFT > counts.CENTER && counts.LEFT > counts.RIGHT ? "LEFT"
+          : counts.RIGHT > counts.CENTER ? "RIGHT"
+          : "CENTER";
+        balanceMessage = `Your interactions are heavily skewed toward ${dominantLeaning.toLowerCase()}-leaning content. Try branching out to gain a more complete picture.`;
+      } else if (balanceScore < 0.6) {
+        balanceMessage = "You're engaging with more than one perspective, but there's still a noticeable imbalance. A wider variety of sources can improve your news diet.";
+      }
 
-const resetClaimsSequence = () => {
-  const query = `
-    UPDATE sqlite_sequence
-    SET seq = (SELECT MAX(id) FROM claims)
-    WHERE name = 'claims';
-  `;
-
-  db.run(query, (err) => {
-    if (err) {
-      console.error("Failed to reset claims sequence:", err.message);
-    } else {
-      console.log("Sequence reset successfully for claims.");
-    }
-  });
-};
-
-// Delete a claim
-app.delete("/claims/:id", verifyToken, (req, res) => {
-  const { id } = req.params;
-
-  const query = "DELETE FROM claims WHERE id = ? AND user_id = ?";
-  db.run(query, [id, req.user.id], function (err) {
-    if (err) return res.status(500).json({ error: "Failed to delete claim" });
-    if (this.changes === 0)
-      return res.status(404).json({ error: "Claim not found or not authorized" });
-
-    resetClaimsSequence(); // Reset sequence after deletion
-    res.status(204).send();
+      res.json({
+        political_leaning: counts.LEFT > counts.CENTER && counts.LEFT > counts.RIGHT ? "LEFT"
+                        : counts.RIGHT > counts.CENTER ? "RIGHT" : "CENTER",
+        interactions: counts,
+        unique_outlets_read: numUniqueOutlets,
+        most_frequented_sources: sortedOutlets,
+        avg_read_time: avgReadTime,
+        reading_behavior_message: readingBehaviorMessage,
+        likes_dislikes: likesDislikes,
+        engagement_metrics: {
+          fully_read: {
+            LEFT: fullyReadPercentage.LEFT,
+            CENTER: fullyReadPercentage.CENTER,
+            RIGHT: fullyReadPercentage.RIGHT
+          },
+          quick_reads: {
+            LEFT: quickReadPercentage.LEFT,
+            CENTER: quickReadPercentage.CENTER,
+            RIGHT: quickReadPercentage.RIGHT
+          },
+          engagement_score: engagementScore
+        },
+        shannon_entropy: shannonEntropy.toFixed(3),
+        kl_divergence: klDivergence.toFixed(3),
+        balance_score: parseFloat(balanceScore),
+        balance_message: balanceMessage
+      });
+    });
   });
 });
 
