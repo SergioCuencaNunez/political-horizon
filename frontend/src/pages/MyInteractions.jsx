@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   HStack,
   Box,
@@ -37,6 +37,8 @@ import logoExploreBright from "../assets/logo-explore-bright.png";
 import logoExploreDark from "../assets/logo-explore-dark.png";
 
 const MyInteractions = ({ interactions, deleteInteraction }) => {
+  const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:5001`;
+
   const logo = useColorModeValue(logoExploreBright, logoExploreDark);
   const logoHeight = useBreakpointValue({ base: '28px', md: '33px' });
 
@@ -45,10 +47,50 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
   
   const { colorMode, toggleColorMode } = useColorMode();
   const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const hasFetched = useRef(false);
+  const [userStatus, setUserStatus] = useState(null);
+  const [loading, setLoading] = useState(false);
+
   const [interactionToDelete, setInteractionToDelete] = useState(null);
   const [selectedSuggested, setSelectedSuggested] = useState([]);
   const [selectedNotRelevant, setSelectedNotRelevant] = useState([]);
   const [sortOrder, setSortOrder] = useState("desc");
+
+  const [errorMessage, setErrorMessage] = useState("");
+  const { isOpen: isErrorOpen, onOpen: onErrorOpen, onClose: onErrorClose } = useDisclosure();
+
+  const READ_TIME_THRESHOLD = 120;
+
+  const suggestedText = useBreakpointValue({
+    base: "These are the news articles you liked or spent time reading. We use this to understand your preferences and offer more relevant, balanced recommendations.",
+    lg: "  These are the news articles you have interacted with, either by explicitly liking them or by spending a significant amount of time reading them. These interactions help us understand your interests and preferences in order to provide more relevant and balanced recommendations.",
+  });
+
+  const notRelevantText = useBreakpointValue({
+    base: "These are articles you disliked or didn’t engage with. We use this to avoid showing you similar content in future suggestions.",
+    lg: "These are the news articles you have shown little interest in, either by disliking them or not spending enough time reading. This feedback helps us fine-tune your interests and avoid suggesting similar content in future recommendations.",
+  });
+
+  useEffect(() => {
+      if (!hasFetched.current) {
+        hasFetched.current = true;
+        checkUserStatus();
+      }
+    }, []);
+
+  const checkUserStatus = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/user/status`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await response.json();
+      setUserStatus(data.status);
+    } catch (error) {
+      setErrorMessage(`Error checking user status: ${error}`);
+    }
+  };
 
   const handleDelete = (interaction) => {
     setInteractionToDelete(interaction);
@@ -69,11 +111,11 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
   };
 
   const handleSelectAllSuggested = (isChecked) => {
-    setSelectedSuggested(isChecked ? interactions.filter(i => i.interaction_type !== "dislike") : []);
+    setSelectedSuggested(isChecked ? interactions.filter(i => i.interaction_type === "like" || (i.interaction_type === "read" && i.read_time_seconds >= READ_TIME_THRESHOLD)) : []);
   };
 
   const handleSelectAllNotRelevant = (isChecked) => {
-    setSelectedNotRelevant(isChecked ? interactions.filter(i => i.interaction_type === "dislike") : []);
+    setSelectedNotRelevant(isChecked ? interactions.filter(i => i.interaction_type === "dislike" || (i.interaction_type === "read" && i.read_time_seconds < READ_TIME_THRESHOLD)) : []);
   };
 
   const handleSelectInteraction = (interaction, isChecked, type) => {
@@ -167,19 +209,16 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
             transition={{ delay: 0.2, duration: 0.5 }}
           >
             <Heading fontSize="2xl" mb="2">Suggested News</Heading>
-            <Text mb="4" textAlign="justify">
-              {useBreakpointValue({
-                base: "These are the news articles you liked or spent time reading. We use this to understand your preferences and offer more relevant, balanced recommendations.",
-                lg: "  These are the news articles you have interacted with, either by explicitly liking them or by spending a significant amount of time reading them. These interactions help us understand your interests and preferences in order to provide more relevant and balanced recommendations.",
-              })}
-            </Text>
+            {userStatus === "returning" && 
+              <Text mb="4" textAlign="justify">{suggestedText}</Text>
+            }
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.5 }}
           >
-              {interactions.some((i) => i.interaction_type !== "dislike") ? (
+              {interactions.some((i) => i.interaction_type === "like" || (i.interaction_type === "read" && i.read_time_seconds >= READ_TIME_THRESHOLD)) ? (
                 <>
                   <Box overflowX="auto">
                     <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
@@ -207,7 +246,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                       <Tbody as={motion.tbody}>
                         <AnimatePresence>
                           {sortedInteractions
-                            .filter((interaction) => interaction.interaction_type !== "dislike")
+                            .filter((interaction) => interaction.interaction_type === "like" || (interaction.interaction_type === "read" && interaction.read_time_seconds >= READ_TIME_THRESHOLD))
                             .map((interaction) => (
                               <motion.tr
                                 key={interaction.id}
@@ -291,7 +330,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                   </Box>
                   <Flex justify="space-between" align="center" height="40px">
                     <Checkbox 
-                      isChecked={selectedSuggested.length === interactions.filter(i => i.interaction_type !== "dislike").length} 
+                      isChecked={selectedSuggested.length === interactions.filter(i => i.interaction_type === "like" || (i.interaction_type === "read" && i.read_time_seconds >= READ_TIME_THRESHOLD)).length} 
                       onChange={(e) => handleSelectAllSuggested(e.target.checked)}
                     >
                       Select All Suggested
@@ -351,19 +390,16 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
             transition={{ delay: 0.6, duration: 0.5 }}
           >
             <Heading fontSize="2xl" mt="4" mb="2">Not Relevant News</Heading>
-            <Text mb="4" textAlign="justify">
-              {useBreakpointValue({
-                base: "These are articles you disliked or didn’t engage with. We use this to avoid showing you similar content in future suggestions.",
-                lg: "These are the news articles you have shown little interest in, either by disliking them or not spending enough time reading. This feedback helps us fine-tune your interests and avoid suggesting similar content in future recommendations.",
-              })}
-            </Text>
+            {userStatus === "returning" && 
+              <Text mb="4" textAlign="justify">{notRelevantText}</Text>
+            }
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8, duration: 0.5 }}
           >
-            {interactions.some((i) => i.interaction_type === "dislike") ? (
+            {interactions.some((i) => i.interaction_type === "dislike" || (i.interaction_type === "read" && i.read_time_seconds < READ_TIME_THRESHOLD)) ? (
               <>
                 <Box overflowX="auto">
                   <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
@@ -391,7 +427,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                     <Tbody as={motion.tbody}>
                       <AnimatePresence>
                         {sortedInteractions
-                          .filter((interaction) => interaction.interaction_type === "dislike")
+                          .filter((interaction) => interaction.interaction_type === "dislike" || (interaction.interaction_type === "read" && interaction.read_time_seconds < READ_TIME_THRESHOLD))
                           .map((interaction) => (
                             <motion.tr
                               key={interaction.id}
@@ -475,7 +511,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                 </Box>
                 <Flex justify="space-between" align="center" height="40px">
                   <Checkbox
-                    isChecked={selectedNotRelevant.length === interactions.filter(i => i.interaction_type === "dislike").length} 
+                    isChecked={selectedNotRelevant.length === interactions.filter(i => i.interaction_type === "dislike" || (i.interaction_type === "read" && i.read_time_seconds < READ_TIME_THRESHOLD)).length} 
                     onChange={(e) => handleSelectAllNotRelevant(e.target.checked)}
                   >
                     Select All Not Relevant
@@ -549,6 +585,30 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                   </motion.div>
                   <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                     <Button onClick={onClose}>Cancel</Button>
+                  </motion.div>
+                </ModalFooter>
+              </ModalContent>
+            </Modal>
+
+            {/* Error Modal */}
+            <Modal isOpen={isErrorOpen} onClose={onErrorClose} isCentered>
+              <ModalOverlay />
+                <ModalContent
+                  width={{ base: "90%"}}
+                >
+                <ModalHeader>Error</ModalHeader>
+                <ModalCloseButton />
+                <ModalBody>
+                  <Text>{errorMessage}</Text>
+                </ModalBody>
+                <ModalFooter>
+                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                    <Button
+                      size="md"
+                      onClick={onErrorClose}
+                    >
+                      Close
+                    </Button>
                   </motion.div>
                 </ModalFooter>
               </ModalContent>

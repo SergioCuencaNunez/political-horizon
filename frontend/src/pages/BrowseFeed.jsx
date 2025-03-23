@@ -99,7 +99,6 @@ const BrowseFeed = () => {
   }, []);
 
   useEffect(() => {
-    const READ_TIME_THRESHOLD = 120;
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         const startTime = localStorage.getItem("read_start_time");
@@ -108,11 +107,7 @@ const BrowseFeed = () => {
         if (startTime && newsId) {
           const elapsedTime = Math.floor((Date.now() - parseInt(startTime)) / 1000);
 
-          if (elapsedTime >= READ_TIME_THRESHOLD) {
-            handleInteraction(newsId, "read", elapsedTime);
-          } else {
-            handleInteraction(newsId, "dislike", elapsedTime);
-          }
+          handleInteraction(newsId, "read", elapsedTime);
 
           localStorage.removeItem("read_start_time");
           localStorage.removeItem("read_news_id");
@@ -535,7 +530,7 @@ const getPoliticalIcon = (leaning) => {
                               : "yellow"
                           }
                           mb="4"
-                          p={1}
+                          p={2}
                           display="flex"
                           width="fit-content"
                           alignItems="center"

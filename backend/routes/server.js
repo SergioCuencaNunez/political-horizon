@@ -418,7 +418,7 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
   const interactionsQuery = `
     SELECT id, read_time_seconds, interaction_type
     FROM user_interactions
-    WHERE user_id = ? AND (interaction_type = 'read' OR interaction_type = 'like')
+    WHERE user_id = ? AND ((interaction_type = 'read') OR interaction_type = 'like')
   `;
 
   db.all(interactionsQuery, [userId], (err, interactionRows) => {
@@ -453,10 +453,10 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
       if (err) return res.status(500).json({ error: "Failed to fetch article details" });
 
       const counts = { LEFT: 0, CENTER: 0, RIGHT: 0 };
-      const likesDislikes = { LEFT: { likes: 0, dislikes: 0 }, CENTER: { likes: 0, dislikes: 0 }, RIGHT: { likes: 0, dislikes: 0 } };
       const totalReadTime = { LEFT: 0, CENTER: 0, RIGHT: 0 };
       const readCounts = { LEFT: 0, CENTER: 0, RIGHT: 0 };
       const outletsCount = {};
+      const outletReadTime = {};
       const outlets = new Set();
       const fullyReadCount = { LEFT: 0, CENTER: 0, RIGHT: 0 };
       const quickReadCount = { LEFT: 0, CENTER: 0, RIGHT: 0 };
@@ -473,28 +473,26 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
         const readTime = row.read_time_seconds;
         const interactionType = row.interaction_type;
 
-        if (interactionType === "like") {
-          likesDislikes[leaning].likes += 1;
-        } else if (interactionType === "dislike") {
-          likesDislikes[leaning].dislikes += 1;
-          return;
-        }
-
-        // Count total interactions
-        if (leaning) counts[leaning] += 1;
-
         // Count read times ONLY for 'read' interactions
         if (interactionType === "read" && readTime > 0) {
           totalReadTime[leaning] += readTime;
           readCounts[leaning] += 1;
-          if (readTime >= 120) fullyReadCount[leaning]++;
-          else if (readTime < 120 && readTime > 60) quickReadCount[leaning]++;
+          if (readTime >= 60) fullyReadCount[leaning]++;
+          else if (readTime < 60) quickReadCount[leaning]++;
         }
+
+        const timeWeight = interactionType === "like" ? 60 : Math.max(10, Math.min(180, readTime || 0));
+
+        if (leaning) counts[leaning] += timeWeight;
 
         if (article.outlet) {
           outlets.add(article.outlet);
-          outletsCount[article.outlet] = (outletsCount[article.outlet] || 0) + 1;
+          outletsCount[article.outlet] = (outletsCount[article.outlet] || 0) + timeWeight;
         }
+
+        if (interactionType === "read" && readTime > 0 && article.outlet) {
+          outletReadTime[article.outlet] = (outletReadTime[article.outlet] || 0) + readTime;
+        }        
       });
 
       // Smoothing to avoid zero probs
@@ -538,6 +536,12 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
         .slice(0, 5)
         .map(([outlet, count]) => ({ outlet, count }));
 
+      // Top Outlets by Time Read
+      const topOutletsByTimeRead = Object.entries(outletReadTime)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([outlet, time]) => ({ outlet, time_read_seconds: Math.round(time) }));
+
       // Source Diversity Score
       const numUniqueOutlets = outlets.size;
       const diversityFactor = ['LEFT', 'CENTER', 'RIGHT'].filter(k => counts[k] > 0).length / 3;
@@ -556,14 +560,17 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
         CENTER: totalReadCount.CENTER > 0 ? ((fullyReadCount.CENTER / totalReadCount.CENTER) * 100).toFixed(1) : "0.0",
         RIGHT: totalReadCount.RIGHT > 0 ? ((fullyReadCount.RIGHT / totalReadCount.RIGHT) * 100).toFixed(1) : "0.0",
       };
-      
       const quickReadPercentage = {
         LEFT: totalReadCount.LEFT > 0 ? ((quickReadCount.LEFT / totalReadCount.LEFT) * 100).toFixed(1) : "0.0",
         CENTER: totalReadCount.CENTER > 0 ? ((quickReadCount.CENTER / totalReadCount.CENTER) * 100).toFixed(1) : "0.0",
         RIGHT: totalReadCount.RIGHT > 0 ? ((quickReadCount.RIGHT / totalReadCount.RIGHT) * 100).toFixed(1) : "0.0",
       };
-      const engagementScore = totalReadCount > 0 ? ((fullyReadCount / totalReadCount) * 100).toFixed(1) : "0.0";
-      
+      const engagementScore = {
+        LEFT: totalReadCount.LEFT > 0 ? ((fullyReadCount.LEFT / totalReadCount.LEFT) * 100).toFixed(1) : "0.0",
+        CENTER: totalReadCount.CENTER > 0 ? ((fullyReadCount.CENTER / totalReadCount.CENTER) * 100).toFixed(1) : "0.0",
+        RIGHT: totalReadCount.RIGHT > 0 ? ((fullyReadCount.RIGHT / totalReadCount.RIGHT) * 100).toFixed(1) : "0.0",
+      };
+
       // Compute **Average Read Time (Only for Read Articles)**
       const avgReadTime = {
         LEFT: readCounts.LEFT > 0 ? (totalReadTime.LEFT / readCounts.LEFT).toFixed(1) : "N/A",
@@ -572,13 +579,13 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
       };
 
       // **Reading Engagement Insight**
-      let readingBehaviorMessage = "Your reading time is balanced across political leanings.";
-      if (readCounts.LEFT > readCounts.CENTER && readCounts.LEFT > readCounts.RIGHT) {
-        readingBehaviorMessage = "You dedicate more reading time to left-leaning articles. Exploring other viewpoints could enrich your perspective.";
-      } else if (readCounts.RIGHT > readCounts.CENTER && readCounts.RIGHT > readCounts.LEFT) {
-        readingBehaviorMessage = "You spend more time on right-leaning articles. Consider allocating time to center or left viewpoints for balance.";
-      } else if (readCounts.CENTER > readCounts.LEFT && readCounts.CENTER > readCounts.RIGHT) {
-        readingBehaviorMessage = "You invest most of your reading time on center-leaning articles. Engaging with left and right perspectives may offer broader context.";
+      let readingBehaviorMessage = "Your reading time appears balanced across political leanings.";
+      if (totalReadTime.LEFT > totalReadTime.CENTER && totalReadTime.LEFT > totalReadTime.RIGHT) {
+        readingBehaviorMessage = "You dedicate significantly more reading time to left-leaning articles. Consider exploring other perspectives for a more balanced view.";
+      } else if (totalReadTime.RIGHT > totalReadTime.CENTER && totalReadTime.RIGHT > totalReadTime.LEFT) {
+        readingBehaviorMessage = "You spend more time on right-leaning articles. Diversifying your reading across the spectrum could enhance your understanding.";
+      } else if (totalReadTime.CENTER > totalReadTime.LEFT && totalReadTime.CENTER > totalReadTime.RIGHT) {
+        readingBehaviorMessage = "You invest most of your reading time in center-leaning articles. Exploring left and right perspectives may offer additional context.";
       }
       
       // **Balance Message**
@@ -599,9 +606,9 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
         interactions: counts,
         unique_outlets_read: numUniqueOutlets,
         most_frequented_sources: sortedOutlets,
+        time_read_per_outlet: topOutletsByTimeRead,
         avg_read_time: avgReadTime,
         reading_behavior_message: readingBehaviorMessage,
-        likes_dislikes: likesDislikes,
         engagement_metrics: {
           fully_read: {
             LEFT: fullyReadPercentage.LEFT,
@@ -613,7 +620,11 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
             CENTER: quickReadPercentage.CENTER,
             RIGHT: quickReadPercentage.RIGHT
           },
-          engagement_score: engagementScore
+          engagement_score: {
+            LEFT: engagementScore.LEFT,
+            CENTER: engagementScore.CENTER,
+            RIGHT: engagementScore.RIGHT
+          },
         },
         shannon_entropy: shannonEntropy.toFixed(3),
         kl_divergence: klDivergence.toFixed(3),

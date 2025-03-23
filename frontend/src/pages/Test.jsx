@@ -1,34 +1,45 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   HStack,
   Box,
   Flex,
   Heading,
   Text,
-  Button,
-  IconButton,
-  Stat,
-  StatLabel,
-  StatNumber,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Divider,
   SimpleGrid,
+  IconButton,
+  Badge,
   useColorMode,
   useColorModeValue,
   useBreakpointValue,
   Collapse,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalBody,
-  ModalFooter,
-  ModalHeader,
-  ModalCloseButton,
   Spinner,
-  useDisclosure,
 } from "@chakra-ui/react";
-import { SunIcon, MoonIcon, InfoOutlineIcon } from "@chakra-ui/icons";
-import GaugeChart from "react-gauge-chart";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { SunIcon, MoonIcon, InfoOutlineIcon, LockIcon } from "@chakra-ui/icons";
+import { 
+  Cell, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Radar, 
+  RadarChart, 
+  Tooltip, 
+  PolarGrid, 
+  PolarAngleAxis, 
+  PolarRadiusAxis,
+  ResponsiveContainer 
+} from "recharts";
+import GaugeComponent from "react-gauge-component";
+import { GiCapitol, GiBigWave, GiScales } from "react-icons/gi";
+import { motion, AnimatePresence } from "framer-motion";
 
 const primaryColorLight = '#c6001e';
 const primaryColorDark = '#cf2640';
@@ -41,7 +52,6 @@ import logoBalanceBright from "../assets/logo-balance-bright.png";
 import logoBalanceDark from "../assets/logo-balance-dark.png";
 
 const BalanceReport = () => {
-  const navigate = useNavigate();
   // For development only
   const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:5001`;
 
@@ -53,71 +63,98 @@ const BalanceReport = () => {
 
   const primaryColor = useColorModeValue(primaryColorLight, primaryColorDark);
   const cardBg = useColorModeValue("white", "gray.700");
+  const modelCardBg = useColorModeValue("gray.50", "gray.800");
   const textColor = useColorModeValue("black", "white");
   
   const hoverColor = useColorModeValue(primaryHoverLight, primaryHoverDark);
   const activeColor = useColorModeValue(primaryActiveLight, primaryActiveDark);
   const { colorMode, toggleColorMode } = useColorMode();
 
+  const hasFetched = useRef(false);
+  const [userStatus, setUserStatus] = useState(null);
+  const [isEngagementFlipped, setIsEngagementFlipped] = useState(false);
+
   const [loading, setLoading] = useState(true);
-  const [leaning, setLeaning] = useState(null);
-  const [distribution, setDistribution] = useState({ LEFT: 0, CENTER: 0, RIGHT: 0 });
-  const [metrics, setMetrics] = useState({ entropy: 0, kl_divergence: 0 });
+  const [report, setReport] = useState(null);
 
   const [showTransparency, setShowTransparency] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const { isOpen: isSpinnerOpen, onOpen: onSpinnerOpen, onClose: onSpinnerClose } = useDisclosure();
-  const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
-  const { isOpen: isErrorOpen, onOpen: onErrorOpen, onClose: onErrorClose } = useDisclosure();
-
   const toggleTransparency = () => setShowTransparency(!showTransparency);
 
   useEffect(() => {
-    const fetchData = async () => {
+      if (!hasFetched.current) {
+        hasFetched.current = true;
+        checkUserStatus();
+      }
+    }, []);
+
+  const checkUserStatus = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/user/status`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await response.json();
+      setUserStatus(data.status);
+    } catch (error) {
+      setErrorMessage(`Error checking user status: ${error}`);
+    }
+  };
+
+  useEffect(() => {
+    const fetchReport = async () => {
       try {
         const token = localStorage.getItem("token");
-
-        const [leaningRes, distributionRes, metricsRes] = await Promise.all([
-          fetch(`${BACKEND_URL}/user/balance-report`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${BACKEND_URL}/user/exposure-distribution`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${BACKEND_URL}/user/diversity-metrics`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
-
-        const leaningData = await leaningRes.json();
-        const distributionData = await distributionRes.json();
-        const metricsData = await metricsRes.json();
-        console.log(leaningData, distributionData, metricsData);
-
-        setLeaning(leaningData.political_leaning);
-        setDistribution(distributionData);
-        setMetrics(metricsData);
-      } catch (error) {
-        console.error("Failed to fetch balance data:", error);
+        const res = await fetch(`${BACKEND_URL}/user/balance-report`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setReport(data);
+      } catch (err) {
+        console.error("Error fetching report:", err);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchData();
+    fetchReport();
   }, []);
 
-  const gaugePercent = {
-    LEFT: 0.15,
-    CENTER: 0.5,
-    RIGHT: 0.85,
-  }[leaning] || 0.5;
+  const getPoliticalIcon = (leaning) => {
+    const iconSize = 15;
+    switch (leaning) {
+      case "RIGHT":
+        return <GiCapitol size={iconSize} />;
+      case "LEFT":
+        return <GiBigWave size={iconSize} />;
+      case "CENTER":
+        return <GiScales size={iconSize} />;
+      default:
+        return null;
+    }
+  };
 
-  const gaugeColor = {
-    LEFT: ["#0066cc"],
-    CENTER: ["#cccc00"],
-    RIGHT: ["#cc0000"],
-  }[leaning] || ["#cccccc"];
+  const outletColors = {
+    "Fox News": useColorModeValue("#FED7D7", "#FEB2B2"),
+    "Breitbart": useColorModeValue("#FED7D7", "#FEB2B2"),
+    "USA Today": useColorModeValue("#FEFCBF", "#FAF089"),
+    "Reuters": useColorModeValue("#FEFCBF", "#FAF089"),
+    "ABC News": useColorModeValue("#FEFCBF", "#FAF089"),
+    "CBS News": useColorModeValue("#FEFCBF", "#FAF089"),
+    "NBC News": useColorModeValue("#FEFCBF", "#FAF089"),
+    "The Guardian": useColorModeValue("#bee3f8", "#90cdf4"),
+    "The New York Times": useColorModeValue("#bee3f8", "#90cdf4"),
+    "Slate": useColorModeValue("#bee3f8", "#90cdf4"),
+    "HuffPost": useColorModeValue("#bee3f8", "#90cdf4"),
+    "Los Angeles Times": useColorModeValue("#bee3f8", "#90cdf4"),
+    "NPR": useColorModeValue("#bee3f8", "#90cdf4"),
+  };
+
+  const headingText = useBreakpointValue({
+    base: "This report provides a detailed analysis of your news consumption habits, including political exposure, and overall information balance.",
+    lg: "This report provides a comprehensive analysis of your news consumption habits, including political exposure, reading engagement, source diversity, and overall information balance.",
+  }); 
+
+  const gridColor = useColorModeValue("#B0B0B0", "#888888");
+  const axisColor = useColorModeValue("#4A4A4A", "#E0E0E0");
 
   return (
     <motion.div
@@ -172,55 +209,284 @@ const BalanceReport = () => {
             </HStack>
           </Flex>
           <Box borderBottom="1px" borderColor="gray.300" mb="4"></Box>
-          
+
           {loading ? (
-            <Flex justify="center" align="center" minH="200px">
+            <Flex align="center" justify="center" h="100vh">
               <Spinner size="xl" />
-            </Flex>
-          ) : (
-            <>
-              <Text fontSize="lg" mb="4" textAlign="justify">
-                Based on your recent news interactions, here's how balanced your political exposure is.
-              </Text>
-
-              <Flex justify="center" mb="6">
-                <GaugeChart
-                  id="gauge-chart"
-                  nrOfLevels={20}
-                  percent={gaugePercent}
-                  colors={gaugeColor}
-                  arcWidth={0.3}
-                  textColor={textColor}
-                  formatTextValue={() => `${leaning || "Unknown"}`}
-                />
+            <Text ml="4">Loading balance report details...</Text>
+          </Flex>
+          ) : userStatus === "new" ? (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 15 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "20vh" }}>
+                <LockIcon boxSize="6" color="gray.500" mb="2" />
+                <Text fontSize="lg" color="gray.500" textAlign="center">
+                  Like or read a few articles to unlock this feature.
+                </Text>
+                <Text fontSize="md" color="gray.400" textAlign="center" mb="2">
+                  To access your Balance Report, please interact with a few articles in Horizon Explore. Once interactions are recorded, your personalized report will be generated automatically and available here.
+                </Text>
               </Flex>
+            </motion.div>
+          ) : report ? (
+            <>
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0, duration: 0.5 }}
+              >
+                <Text mb="4" textAlign="justify">{headingText}</Text>
+              </motion.div>
 
-              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={6}>
-                <Stat>
-                  <StatLabel>Left Exposure</StatLabel>
-                  <StatNumber>{(distribution.LEFT * 100).toFixed(1)}%</StatNumber>
-                </Stat>
-                <Stat>
-                  <StatLabel>Center Exposure</StatLabel>
-                  <StatNumber>{(distribution.CENTER * 100).toFixed(1)}%</StatNumber>
-                </Stat>
-                <Stat>
-                  <StatLabel>Right Exposure</StatLabel>
-                  <StatNumber>{(distribution.RIGHT * 100).toFixed(1)}%</StatNumber>
-                </Stat>
-              </SimpleGrid>
+              {/* Political Exposure */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+              >
+                <Box mb="4">
+                  <Heading size="md" mb="4">Political Exposure</Heading>
+                  <SimpleGrid columns={{ base: 1, md: 1, lg: 3 }} spacing={4} mb="6">
+                    {["LEFT", "CENTER", "RIGHT"].map((leaning) => (
+                      <Badge
+                        key={leaning}
+                        colorScheme={leaning === "RIGHT" ? "red" : leaning === "LEFT" ? "blue" : "yellow"}
+                        p={2}
+                        display="flex"
+                        alignItems="center"
+                        gap="2"
+                        justifyContent="center"
+                        width="full"
+                    >
+                      {getPoliticalIcon(leaning)}
+                        <Text fontSize="sm" fontWeight="bold">
+                          {leaning}: {((report.interactions[leaning] / Object.values(report.interactions).reduce((a, b) => a + b, 0)) * 100).toFixed(1)}%
+                        </Text>
+                      </Badge>
+                    ))}
+                  </SimpleGrid>
+                </Box>
+              </motion.div>
 
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-                <Stat>
-                  <StatLabel>Shannon Entropy</StatLabel>
-                  <StatNumber>{metrics.shannon_entropy.toFixed(3)}</StatNumber>
-                </Stat>
-                <Stat>
-                  <StatLabel>KL Divergence (vs ideal)</StatLabel>
-                  <StatNumber>{metrics.kl_divergence.toFixed(3)}</StatNumber>
-                </Stat>
-              </SimpleGrid>
+              <Divider mb="6" />
+
+              {/* Reading Engagement & Intensity */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+              >
+                <Box mb="4">
+                  <Heading size="md" mb="4">Reading Engagement Analysis</Heading>
+                  <Box overflowX="auto" p="2" bg={modelCardBg} borderRadius="md" shadow="md">
+                    <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
+                      <Thead>
+                        <Tr>
+                          <Th width="20%" textAlign="center">Leaning</Th>
+                          <Th width="20%" textAlign="center">Avg Read Time (s)</Th>
+                          <Th width="20%" textAlign="center">Fully Read (%)</Th>
+                          <Th width="20%" textAlign="center">Quick Reads (%)</Th>
+                          <Th width="20%" textAlign="center">Engagement Score</Th>
+                        </Tr>
+                      </Thead>
+                      <Tbody as={motion.tbody}>
+                        <AnimatePresence>
+                          {["LEFT", "CENTER", "RIGHT"].map((leaning) => (
+                            <motion.tr
+                              key={leaning}
+                              layout
+                              initial={{ opacity: 0, y: 50 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -50 }}
+                              transition={{ duration: 0.5 }}
+                            >
+                              <Td fontWeight="semibold" textAlign="left">{leaning}</Td>
+                              <Td textAlign="center">{report.avg_read_time[leaning]} sec</Td>
+                              <Td textAlign="center">{report.engagement_metrics.fully_read[leaning]}%</Td>
+                              <Td textAlign="center">{report.engagement_metrics.quick_reads[leaning]}%</Td>
+                              <Td textAlign="center">{report.engagement_metrics.engagement_score[leaning]}</Td>
+                            </motion.tr>
+                          ))}
+                        </AnimatePresence>
+                      </Tbody>
+                    </Table>
+                  </Box>
+                  <Text mt="4" mb="2" textAlign="justify">{report.reading_behavior_message}</Text>
+                </Box>
+              </motion.div>
+
+              {/* Source Diversity */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.5 }}
+              >
+                <Box mb="4">
+                <Heading size="md" mb="4">Source Diversity</Heading>
+                {report.most_frequented_sources.length > 2 ? (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <RadarChart
+                      cx="50%"
+                      cy="50%"
+                      outerRadius="80%"
+                      data={report.most_frequented_sources}
+                    >
+                      <PolarGrid stroke={gridColor} />
+                      <PolarAngleAxis dataKey="outlet" stroke={axisColor} tick={{ fontSize: 11 }} />
+                      <PolarRadiusAxis stroke={axisColor} tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Radar
+                        name="Exposure"
+                        dataKey="count"
+                        stroke={primaryColor}
+                        fill={primaryColor}
+                        fillOpacity={0.3}
+                        strokeWidth={2}
+                        dot={true}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>                
+                ) : (              
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={report.most_frequented_sources}>
+                      <CartesianGrid stroke={gridColor} strokeDasharray="3 3" />
+                      <XAxis dataKey="outlet" stroke={axisColor} />
+                      <YAxis stroke={axisColor} />
+                      <Tooltip />
+                        <Bar dataKey="count" barSize={Math.min(150, 300 / report.most_frequented_sources.length)}>
+                          {report.most_frequented_sources.map((source, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={outletColors[source.outlet] || "#ccc"} 
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+                </Box>
+              </motion.div>
+
+              <Divider mb="6" />
+
+              {/* Overall Information Balance */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8, duration: 0.5 }}
+              >
+                <Box mb="4">
+                  <Heading size="md" mb="4">Overall Information Balance</Heading>
+                  <Box overflowX="auto" p="2" bg={modelCardBg} borderRadius="md" shadow="md">
+                    <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
+                      <Thead>
+                        <Tr>
+                          <Th textAlign="center">Metric</Th>
+                          <Th textAlign="center">Value</Th>
+                          <Th textAlign="center">Interpretation</Th>
+                        </Tr>
+                      </Thead>
+                      <Tbody as={motion.tbody}>
+                        <AnimatePresence>
+                          <motion.tr
+                            layout
+                            key="entropy"
+                            initial={{ opacity: 0, y: 50 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -50 }}
+                            transition={{ duration: 0.5 }}
+                          >
+                            <Td fontWeight="semibold" textAlign="left">Shannon Entropy</Td>
+                            <Td textAlign="center">{report.shannon_entropy}</Td>
+                            <Td textAlign="center">Higher means more diverse consumption</Td>
+                          </motion.tr>
+                          <motion.tr
+                            layout
+                            key="kl"
+                            initial={{ opacity: 0, y: 50 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -50 }}
+                            transition={{ duration: 0.5 }}
+                          >
+                            <Td fontWeight="semibold" textAlign="left">KL Divergence</Td>
+                            <Td textAlign="center">{report.kl_divergence}</Td>
+                            <Td textAlign="center">Closer to 0 means a more balanced reading</Td>
+                          </motion.tr>
+                        </AnimatePresence>
+                      </Tbody>
+                    </Table>
+                  </Box>
+                </Box>
+              </motion.div>
+
+              {/* Balance Score */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1, duration: 0.5 }}
+              >
+                <Box mb="4">
+                <GaugeComponent
+                  type="semicircle"
+                  value={report.balance_score * 100}
+                  minValue={0}
+                  maxValue={100}
+                  style={{ width: "100%", maxWidth: "350px", margin: "0 auto" }}
+                  arc={{
+                    width: 0.3,
+                    padding: 0.015,
+                    cornerRadius: 3,
+                    subArcs: [                    
+                      { limit: 30, color: "#FEB2B2" },
+                      { limit: 60, color: "#FBD38D" },
+                      { limit: 100, color: "#9AE6B4" },
+                    ],
+                  }}
+                  pointer={{
+                    type: "blob",
+                    color: "#222",
+                    baseColor: "#fff",
+                    strokeWidth: 2,
+                    width: 25,
+                    length: 0.45,
+                    animate: true,
+                    animationDuration: 2000,
+                  }}
+                  labels={{
+                    valueLabel: {
+                      formatTextValue: (value) => `${value.toFixed(1)}%`,
+                      style: {
+                        fill: textColor,
+                        fontWeight: "bold",
+                        fontSize: "26px",
+                        textShadow: "none",
+                      },
+                    },
+                    tickLabels: {
+                      type: "outer",
+                      ticks: [
+                        { value: 0, label: "0%" },
+                        { value: 50, label: "50%" },
+                        { value: 100, label: "100%" },
+                      ],
+                      style: {
+                        fill: "#888",
+                        fontSize: "12px",
+                        textShadow: "none",
+                      },
+                    },
+                  }}
+                />
+                  <Text textAlign="center">{report.balance_message}</Text>
+                </Box>
+              </motion.div>
             </>
+          ) : (
+            <Text>Error loading report data.</Text>
           )}
 
           {/* Transparency Section */}
@@ -235,80 +501,19 @@ const BalanceReport = () => {
               <Box mt={4} p={4} borderRadius="md" bg={useColorModeValue("gray.50", "gray.800")}>
                 <Text fontSize="sm" textAlign="justify">
                   {useBreakpointValue({
-                    base: "FactGuard Verify uses the Google Fact Check API to validate claims and provide reliable results.",
-                    lg: "FactGuard Verify integrates directly with the Google Fact Check Tools API to validate the accuracy of claims. By leveraging a comprehensive database of verified information from trusted fact-checking organizations, it ensures users receive precise and reliable results when assessing the truthfulness of claims.",
+                    base: "Horizon Balance generates this report based on your interactions with Horizon Explore and the news recommendations you've received.",
+                    lg: "Horizon Balance generates this comprehensive report by analyzing your interactions within Horizon Explore, including how you engage with recommended articles. It helps you to better understand your news consumption patterns.",
                   })}
                 </Text>
                 <Text mt={2} fontSize="sm" textAlign="justify">
                   {useBreakpointValue({
-                    base: "The system is continuously improved to enhance reliability and user experience.",
-                    lg: "This integration with the Google Fact Check Tools API ensures robust claim validation, offering users a reliable tool for uncovering the truth. FactGuard Verify is continuously improved to provide enhanced reliability, transparency, and a seamless user experience in combating misinformation.",
+                    base: "It helps you understand your exposure and preferences in a transparent and structured way.",
+                    lg: "By combining engagement signals with content diversity metrics, Horizon Balance empowers you to reflect on your reading habits and encourages a more balanced and open news consumption experience. This transparency is key to fostering critical thinking and reducing ideological bias.",
                   })}
                 </Text>
               </Box>
             </Collapse>
           </Flex>
-
-          {/* Spinner Modal */}
-          <Modal isOpen={isSpinnerOpen} onClose={onSpinnerClose} closeOnOverlayClick={false} closeOnEsc={false} isCentered>
-            <ModalOverlay />
-              <ModalContent
-                width={{ base: "90%"}}
-              >
-              <ModalBody textAlign="center" py="6">
-                <Spinner size="xl" />
-                <Text mt="4">Verifying Query... Please Wait.</Text>
-              </ModalBody>
-            </ModalContent>
-          </Modal>
-
-          {/* Alert Modal */}
-          <Modal isOpen={isAlertOpen} onClose={onAlertClose} isCentered>
-            <ModalOverlay />
-              <ModalContent
-                width={{ base: "90%"}}
-              >
-              <ModalHeader>Missing Information</ModalHeader>
-              <ModalCloseButton />
-              <ModalBody>
-                Please input the query in the provided field to proceed with verification. 
-              </ModalBody>
-              <ModalFooter>
-                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                  <Button
-                    size="md"
-                    onClick={onAlertClose}
-                  >
-                    Close
-                  </Button>
-                </motion.div>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-
-          {/* Error Modal */}
-          <Modal isOpen={isErrorOpen} onClose={onErrorClose} isCentered>
-            <ModalOverlay />
-              <ModalContent
-                width={{ base: "90%"}}
-              >
-              <ModalHeader>Error</ModalHeader>
-              <ModalCloseButton />
-              <ModalBody>
-                <Text>{errorMessage}</Text>
-              </ModalBody>
-              <ModalFooter>
-                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                  <Button
-                    size="md"
-                    onClick={onErrorClose}
-                  >
-                    Close
-                  </Button>
-                </motion.div>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
         </Flex>
       </Box>
     </motion.div>
