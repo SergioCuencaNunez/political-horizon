@@ -46,6 +46,7 @@ import { FaTrashCan } from "react-icons/fa6";
 import { GiCapitol, GiBigWave, GiScales } from "react-icons/gi";
 import { useNavigate, Routes, Route } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import GaugeComponent from "react-gauge-component";
 
 import logoBright from '../assets/logo-bright.png';
 import logoDark from '../assets/logo-dark.png';
@@ -55,6 +56,9 @@ import MyInteractions from "./MyInteractions";
 import BalanceReport from "./BalanceReport";
 import AccountDetails from "./AccountDetails";
 import NotFound from "../pages/NotFound"; 
+
+import RecommendationsLineChart from "../graphs/RecommendationsLineChart";
+import InteractionsStatistics from "../graphs/InteractionsStatistics";
 
 const primaryColorLight = '#c6001e';
 const primaryColorDark = '#cf2640';
@@ -102,6 +106,8 @@ const Profile = () => {
   
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState(null);
+
+  const gridColor = useColorModeValue("#B0B0B0", "#888888");
   
   useEffect(() => {
     if (!hasFetched.current) {
@@ -768,32 +774,8 @@ const Profile = () => {
                           bg: useColorModeValue("gray.50", "gray.600"),
                         }}                
                       >
-                        <Heading size="md" mb="4">Bias & Diversity Metrics</Heading>
-                      </Box>
-                    </motion.div>
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                      style={{ flex: "1 1 calc(33.333% - 1rem)", minWidth: "250px" }}
-                    >
-                      <Box 
-                        bg={cardBg} 
-                        p="5" 
-                        borderRadius="md"
-                        height="100%"
-                        flex="1"
-                        shadow="md"
-                        display="flex" 
-                        flexDirection="column" 
-                        justifyContent="flex-start" 
-                        alignItems="center" 
-                        textAlign="center"
-                        _hover={{
-                          bg: useColorModeValue("gray.50", "gray.600"),
-                        }}                
-                      >
-                        <Heading size="md" mb="4">User Engagement Overview</Heading>
+                        <Heading size="md" mb="4">Recommendations Over Time</Heading>
+                        <RecommendationsLineChart interactions={interactions} />
                       </Box>
                     </motion.div>
                     <motion.div
@@ -818,7 +800,8 @@ const Profile = () => {
                           bg: useColorModeValue("gray.50", "gray.600"),
                         }}               
                       >
-                        <Heading size="md" mb="4">Recommendation Effectiveness</Heading>
+                        <Heading size="md" mb="4">Interactions Statistics</Heading>
+                        <InteractionsStatistics interactions={interactions} />
                       </Box>
                     </motion.div>
                   </Flex>
@@ -1030,8 +1013,61 @@ const Profile = () => {
                               </AnimatePresence>
                             </Tbody>
                           </Table>
-                          
                         </Box>
+                        <Text fontWeight="bold" fontSize="xl" mb="2">Balance Score</Text>    
+                        <GaugeComponent
+                          key={colorMode}
+                          type="semicircle"
+                          value={report.balance_score * 100}
+                          minValue={0}
+                          maxValue={100}
+                          style={{ width: "100%", maxWidth: "350px", margin: "0 auto" }}
+                          arc={{
+                            width: 0.3,
+                            padding: 0.015,
+                            cornerRadius: 3,
+                            subArcs: [                    
+                              { limit: 30, color: "#FEB2B2" },
+                              { limit: 60, color: "#FBD38D" },
+                              { limit: 100, color: "#9AE6B4" },
+                            ],
+                          }}
+                          pointer={{
+                            type: "blob",
+                            color: "#222",
+                            baseColor: "#fff",
+                            strokeWidth: 2,
+                            width: 25,
+                            length: 0.45,
+                            animate: true,
+                            animationDuration: 2000,
+                          }}
+                          labels={{
+                            valueLabel: {
+                              formatTextValue: (value) => `${value.toFixed(1)}%`,
+                              style: {
+                                fill: textColor,
+                                fontWeight: "bold",
+                                fontSize: "26px",
+                                textShadow: "none",
+                              },
+                            },
+                            tickLabels: {
+                              type: "outer",
+                              ticks: [
+                                { value: 0, label: "0%" },
+                                { value: 50, label: "50%" },
+                                { value: 100, label: "100%" },
+                              ],
+                              style: {
+                                fill: gridColor,
+                                fontSize: "14px",
+                                textShadow: "none",
+                              },
+                            },
+                          }}
+                        />
+                        <Text textAlign="center">{report.balance_message}</Text>
                       </Box>
                    </>
                    ) : (

@@ -89,6 +89,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
       setUserStatus(data.status);
     } catch (error) {
       setErrorMessage(`Error checking user status: ${error}`);
+      onErrorOpen();
     }
   };
 
@@ -565,54 +566,54 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
           </motion.div>
 
           {/* Confirmation Modal */}
-            <Modal isOpen={isOpen} onClose={onClose} isCentered>
-              <ModalOverlay />
-                <ModalContent
-                  width={{ base: "90%"}}
-                >
-                <ModalHeader>Confirm Deletion</ModalHeader>
-                <ModalCloseButton />
-                <ModalBody textAlign="justify">
-                  {interactionToDelete
-                    ? "Are you sure you want to delete this interaction? This will remove the selected news article and its recommendations."
-                    : "Are you sure you want to delete the selected interactions? This will remove the selected news articles and their recommendations."}
-                </ModalBody>
-                <ModalFooter>
-                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                    <Button colorScheme="blue" mr={3} onClick={confirmDelete}>
-                      Delete
-                    </Button>
-                  </motion.div>
-                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                    <Button onClick={onClose}>Cancel</Button>
-                  </motion.div>
-                </ModalFooter>
-              </ModalContent>
-            </Modal>
+          <Modal isOpen={isOpen} onClose={onClose} isCentered>
+            <ModalOverlay />
+              <ModalContent
+                width={{ base: "90%"}}
+              >
+              <ModalHeader>Confirm Deletion</ModalHeader>
+              <ModalCloseButton />
+              <ModalBody textAlign="justify">
+                {interactionToDelete
+                  ? "Are you sure you want to delete this interaction? This will remove the selected news article and its recommendations."
+                  : "Are you sure you want to delete the selected interactions? This will remove the selected news articles and their recommendations."}
+              </ModalBody>
+              <ModalFooter>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button colorScheme="blue" mr={3} onClick={confirmDelete}>
+                    Delete
+                  </Button>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button onClick={onClose}>Cancel</Button>
+                </motion.div>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
 
-            {/* Error Modal */}
-            <Modal isOpen={isErrorOpen} onClose={onErrorClose} isCentered>
-              <ModalOverlay />
-                <ModalContent
-                  width={{ base: "90%"}}
-                >
-                <ModalHeader>Error</ModalHeader>
-                <ModalCloseButton />
-                <ModalBody>
-                  <Text>{errorMessage}</Text>
-                </ModalBody>
-                <ModalFooter>
-                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                    <Button
-                      size="md"
-                      onClick={onErrorClose}
-                    >
-                      Close
-                    </Button>
-                  </motion.div>
-                </ModalFooter>
-              </ModalContent>
-            </Modal>
+          {/* Error Modal */}
+          <Modal isOpen={isErrorOpen} onClose={onErrorClose} isCentered>
+            <ModalOverlay />
+              <ModalContent
+                width={{ base: "90%"}}
+              >
+              <ModalHeader>Error</ModalHeader>
+              <ModalCloseButton />
+              <ModalBody>
+                <Text>{errorMessage}</Text>
+              </ModalBody>
+              <ModalFooter>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button
+                    size="md"
+                    onClick={onErrorClose}
+                  >
+                    Close
+                  </Button>
+                </motion.div>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
         </Flex>
       </Box>
     </motion.div>

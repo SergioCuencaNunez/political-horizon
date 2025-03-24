@@ -16,7 +16,7 @@ SECRET_KEY = "secret_key"
 polusa_balanced = pd.read_csv("backend/data/polusa_balanced.csv", header=0)
 
 # Minimum seconds to consider "interested"
-READ_TIME_THRESHOLD = 90
+READ_TIME_THRESHOLD = 120
 
 def verify_token(func):
     @wraps(func)

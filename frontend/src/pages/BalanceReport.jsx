@@ -42,9 +42,6 @@ import GaugeComponent from "react-gauge-component";
 import { GiCapitol, GiBigWave, GiScales } from "react-icons/gi";
 import { motion, AnimatePresence } from "framer-motion";
 
-const primaryColorLight = '#c6001e';
-const primaryColorDark = '#cf2640';
-
 import logoBalanceBright from "../assets/logo-balance-bright.png";
 import logoBalanceDark from "../assets/logo-balance-dark.png";
 
@@ -60,11 +57,18 @@ const BalanceReport = () => {
 
   const { colorMode, toggleColorMode } = useColorMode();
 
-  const primaryColor = useColorModeValue(primaryColorLight, primaryColorDark);
   const cardBg = useColorModeValue("white", "gray.700");
   const modelCardBg = useColorModeValue("gray.50", "gray.800");
+  const transparencyColor = useColorModeValue("gray.500", "gray.400");
   const textColor = useColorModeValue("black", "white");
   
+  const fillColor = useColorModeValue("#A0AEC0", "#CBD5E0");
+  const backgroundColor = useColorModeValue("#ffffff", "#1A202C");
+  const graphColor = useColorModeValue("#1A202C", "#EDF2F7");
+  const borderColor =useColorModeValue("#CBD5E0", "#4A5568");
+
+  const labelColor = useColorModeValue("#2D3748", "#E2E8F0");
+
   const hasFetched = useRef(false);
   const [userStatus, setUserStatus] = useState(null);
   const [isEngagementFlipped, setIsEngagementFlipped] = useState(false);
@@ -77,6 +81,15 @@ const BalanceReport = () => {
 
   const [showTransparency, setShowTransparency] = useState(false);
   const toggleTransparency = () => setShowTransparency(!showTransparency);
+
+  const transparencyText = useBreakpointValue({
+    base: "Horizon Balance generates this report based on your interactions with Horizon Explore and the news recommendations you've received.",
+    lg: "Horizon Balance generates this comprehensive report by analyzing your interactions within Horizon Explore, including how you engage with recommended articles. It helps you to better understand your news consumption patterns.",
+  }); 
+  const moreTransparencyText = useBreakpointValue({
+    base: "It helps you understand your exposure and preferences in a transparent and structured way.",
+    lg: "By combining engagement signals with content diversity metrics, Horizon Balance empowers you to reflect on your reading habits and encourages a more balanced and open news consumption experience. This transparency is key to fostering critical thinking and reducing ideological bias.",
+  });
 
   useEffect(() => {
       if (!hasFetched.current) {
@@ -152,22 +165,30 @@ const BalanceReport = () => {
         return null;
     }
   };
-
+                      
   const outletColors = {
-    "Fox News": useColorModeValue("#FED7D7", "#FEB2B2"),
-    "Breitbart": useColorModeValue("#FED7D7", "#FEB2B2"),
-    "USA Today": useColorModeValue("#FEFCBF", "#FAF089"),
-    "Reuters": useColorModeValue("#FEFCBF", "#FAF089"),
-    "ABC News": useColorModeValue("#FEFCBF", "#FAF089"),
-    "CBS News": useColorModeValue("#FEFCBF", "#FAF089"),
-    "NBC News": useColorModeValue("#FEFCBF", "#FAF089"),
-    "The Guardian": useColorModeValue("#bee3f8", "#90cdf4"),
-    "The New York Times": useColorModeValue("#bee3f8", "#90cdf4"),
-    "Slate": useColorModeValue("#bee3f8", "#90cdf4"),
-    "HuffPost": useColorModeValue("#bee3f8", "#90cdf4"),
-    "Los Angeles Times": useColorModeValue("#bee3f8", "#90cdf4"),
-    "NPR": useColorModeValue("#bee3f8", "#90cdf4"),
+    "Fox News": "#FEB2B2",
+    "Breitbart": "#FEB2B2",
+    "USA Today": "#FAF089",
+    "Reuters": "#FAF089",
+    "ABC News": "#FAF089",
+    "CBS News": "#FAF089",
+    "NBC News": "#FAF089",
+    "The Guardian": "#90cdf4",
+    "The New York Times": "#90cdf4",
+    "HuffPost": "#90cdf4",
+    "Los Angeles Times": "#90cdf4",
+    "NPR": "#90cdf4",
   };
+
+  const topOutletData = report?.most_frequented_sources?.length
+  ? report.most_frequented_sources.reduce(
+      (max, item) => (item.count > max.count ? item : max),
+      { outlet: "", count: 0 }
+    )
+  : { outlet: "", count: 0 };
+  
+  const radarColor = outletColors[topOutletData.outlet];
 
   const headingText = useBreakpointValue({
     base: "This report provides a detailed analysis of your news consumption habits, including political exposure, and overall information balance.",
@@ -462,23 +483,23 @@ const BalanceReport = () => {
                             formatter={(value) => `${value} sec`}
                             labelFormatter={(label) => `Outlet: ${label}`}
                             cursor={{
-                              fill: useColorModeValue("#A0AEC0", "#CBD5E0"),
+                              fill: fillColor,
                               fillOpacity: 0.2,
                             }}
                             contentStyle={{
-                              backgroundColor: useColorModeValue("#ffffff", "#1A202C"),
-                              color: useColorModeValue("#1A202C", "#EDF2F7"),
+                              backgroundColor: backgroundColor,
+                              color: graphColor,
                               border: "1px solid",
-                              borderColor: useColorModeValue("#CBD5E0", "#4A5568"),
+                              borderColor: borderColor,
                               borderRadius: "6px",
                               fontSize: "14px",
                             }}
                             labelStyle={{
-                              color: useColorModeValue("#2D3748", "#E2E8F0"),
+                              color: labelColor,
                               fontWeight: "bold",
                             }}
                             itemStyle={{
-                              color: useColorModeValue("#2D3748", "#E2E8F0"),
+                              color: labelColor,
                               fontSize: "13px",
                             }}
                           />
@@ -515,32 +536,32 @@ const BalanceReport = () => {
                               <PolarRadiusAxis stroke={axisColor} tick={{ fontSize: 12 }} />
                               <Tooltip
                                 cursor={{
-                                  fill: useColorModeValue("#A0AEC0", "#CBD5E0"),
+                                  fill: fillColor,
                                   fillOpacity: 0.2,
                                 }}
                                 contentStyle={{
-                                  backgroundColor: useColorModeValue("#ffffff", "#1A202C"),
-                                  color: useColorModeValue("#1A202C", "#EDF2F7"),
+                                  backgroundColor: backgroundColor,
+                                  color: graphColor,
                                   border: "1px solid",
-                                  borderColor: useColorModeValue("#CBD5E0", "#4A5568"),
+                                  borderColor: borderColor,
                                   borderRadius: "6px",
                                   fontSize: "14px",
                                 }}
                                 labelStyle={{
-                                  color: useColorModeValue("#2D3748", "#E2E8F0"),
+                                  color: labelColor,
                                   fontWeight: "bold",
                                 }}
                                 itemStyle={{
-                                  color: useColorModeValue("#2D3748", "#E2E8F0"),
+                                  color: labelColor,
                                   fontSize: "13px",
                                 }}
                               />
                               <Radar
                                 name="Exposure"
                                 dataKey="count"
-                                stroke={primaryColor}
-                                fill={primaryColor}
-                                fillOpacity={0.3}
+                                stroke={radarColor}
+                                fill={radarColor}
+                                fillOpacity={0.4}
                                 strokeWidth={2}
                                 dot={true}
                               />
@@ -624,59 +645,59 @@ const BalanceReport = () => {
                 transition={{ delay: 1, duration: 0.5 }}
               >
                 <Box mb="4">
-                <GaugeComponent
-                  key={colorMode}
-                  type="semicircle"
-                  value={report.balance_score * 100}
-                  minValue={0}
-                  maxValue={100}
-                  style={{ width: "100%", maxWidth: "350px", margin: "0 auto" }}
-                  arc={{
-                    width: 0.3,
-                    padding: 0.015,
-                    cornerRadius: 3,
-                    subArcs: [                    
-                      { limit: 30, color: "#FEB2B2" },
-                      { limit: 60, color: "#FBD38D" },
-                      { limit: 100, color: "#9AE6B4" },
-                    ],
-                  }}
-                  pointer={{
-                    type: "blob",
-                    color: "#222",
-                    baseColor: "#fff",
-                    strokeWidth: 2,
-                    width: 25,
-                    length: 0.45,
-                    animate: true,
-                    animationDuration: 2000,
-                  }}
-                  labels={{
-                    valueLabel: {
-                      formatTextValue: (value) => `${value.toFixed(1)}%`,
-                      style: {
-                        fill: useColorModeValue("black", "white"),
-                        fontWeight: "bold",
-                        fontSize: "26px",
-                        textShadow: "none",
-                      },
-                    },
-                    tickLabels: {
-                      type: "outer",
-                      ticks: [
-                        { value: 0, label: "0%" },
-                        { value: 50, label: "50%" },
-                        { value: 100, label: "100%" },
+                  <GaugeComponent
+                    key={colorMode}
+                    type="semicircle"
+                    value={report.balance_score * 100}
+                    minValue={0}
+                    maxValue={100}
+                    style={{ width: "100%", maxWidth: "350px", margin: "0 auto" }}
+                    arc={{
+                      width: 0.3,
+                      padding: 0.015,
+                      cornerRadius: 3,
+                      subArcs: [                    
+                        { limit: 30, color: "#FEB2B2" },
+                        { limit: 60, color: "#FBD38D" },
+                        { limit: 100, color: "#9AE6B4" },
                       ],
-                      style: {
-                        fill: gridColor,
-                        fontSize: "14px",
-                        textShadow: "none",
+                    }}
+                    pointer={{
+                      type: "blob",
+                      color: "#222",
+                      baseColor: "#fff",
+                      strokeWidth: 2,
+                      width: 25,
+                      length: 0.45,
+                      animate: true,
+                      animationDuration: 2000,
+                    }}
+                    labels={{
+                      valueLabel: {
+                        formatTextValue: (value) => `${value.toFixed(1)}%`,
+                        style: {
+                          fill: textColor,
+                          fontWeight: "bold",
+                          fontSize: "26px",
+                          textShadow: "none",
+                        },
                       },
-                    },
-                  }}
-                />
-                  <Text textAlign="center">{report.balance_message}</Text>
+                      tickLabels: {
+                        type: "outer",
+                        ticks: [
+                          { value: 0, label: "0%" },
+                          { value: 50, label: "50%" },
+                          { value: 100, label: "100%" },
+                        ],
+                        style: {
+                          fill: gridColor,
+                          fontSize: "14px",
+                          textShadow: "none",
+                        },
+                      },
+                    }}
+                  />
+                    <Text textAlign="center">{report.balance_message}</Text>
                 </Box>
               </motion.div>
             </>
@@ -686,25 +707,19 @@ const BalanceReport = () => {
 
           {/* Transparency Section */}
           <Flex direction="column">
-            <Flex align="center" cursor="pointer" onClick={toggleTransparency} color={useColorModeValue("gray.500", "gray.400")}>
+            <Flex align="center" cursor="pointer" onClick={toggleTransparency} color={transparencyColor}>
               <InfoOutlineIcon />
               <Text fontSize="sm" fontWeight="bold" ml={2}>
                 More Information and Details
               </Text>
             </Flex>
             <Collapse in={showTransparency}>
-              <Box mt={4} p={4} borderRadius="md" bg={useColorModeValue("gray.50", "gray.800")}>
+              <Box mt={4} p={4} borderRadius="md" bg={modelCardBg}>
                 <Text fontSize="sm" textAlign="justify">
-                  {useBreakpointValue({
-                    base: "Horizon Balance generates this report based on your interactions with Horizon Explore and the news recommendations you've received.",
-                    lg: "Horizon Balance generates this comprehensive report by analyzing your interactions within Horizon Explore, including how you engage with recommended articles. It helps you to better understand your news consumption patterns.",
-                  })}
+                  {transparencyText}
                 </Text>
                 <Text mt={2} fontSize="sm" textAlign="justify">
-                  {useBreakpointValue({
-                    base: "It helps you understand your exposure and preferences in a transparent and structured way.",
-                    lg: "By combining engagement signals with content diversity metrics, Horizon Balance empowers you to reflect on your reading habits and encourages a more balanced and open news consumption experience. This transparency is key to fostering critical thinking and reducing ideological bias.",
-                  })}
+                  {moreTransparencyText}
                 </Text>
               </Box>
             </Collapse>
