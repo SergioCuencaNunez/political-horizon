@@ -10,9 +10,18 @@ import {
 } from "recharts";
 import { useColorModeValue } from "@chakra-ui/react";
 
+const primaryColorLight = '#c6001e';
+const primaryColorDark = '#cf2640';
+
+const otherColorLight = '#3182ce';
+const otherColorDark = '#90cdf4';
+
 const READ_TIME_THRESHOLD = 60;
 
 const InteractionsStatistics = ({ interactions }) => {
+  const primaryColor = useColorModeValue(primaryColorLight, primaryColorDark);
+  const otherColor = useColorModeValue(otherColorLight, otherColorDark);
+
   const axisColor = useColorModeValue("#4A4A4A", "#E0E0E0");
   const gridColor = useColorModeValue("#B0B0B0", "#888888");
 
@@ -85,8 +94,8 @@ const InteractionsStatistics = ({ interactions }) => {
           }}
         />
         <Legend />
-        <Bar dataKey="suggested" fill="#3182CE" name="Suggested Articles" barSize={dynamicBarSize} />
-        <Bar dataKey="notRelevant" fill="#E53E3E" name="Not Relevant" barSize={dynamicBarSize} />
+        <Bar dataKey="suggested" fill={primaryColor} name="Suggested Articles" barSize={dynamicBarSize} />
+        <Bar dataKey="notRelevant" fill={otherColor} name="Not Relevant" barSize={dynamicBarSize} />
       </BarChart>
     </ResponsiveContainer>
   );
