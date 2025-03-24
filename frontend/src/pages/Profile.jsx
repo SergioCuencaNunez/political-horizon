@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Flex,
@@ -16,6 +16,7 @@ import {
   Avatar,
   IconButton,
   Badge,
+  SimpleGrid,
   useColorMode,
   useColorModeValue,
   useBreakpointValue,
@@ -40,8 +41,9 @@ import {
   FaChartBar,
   FaBalanceScale,
   FaCogs,
-  FaTrashAlt,
 } from "react-icons/fa";
+import { FaTrashCan } from "react-icons/fa6";
+import { GiCapitol, GiBigWave, GiScales } from "react-icons/gi";
 import { useNavigate, Routes, Route } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -64,6 +66,8 @@ const primaryActiveDark = '#e14f64';
 const sidebarLight = '#dbe2e8';
 const sidebarDark = '#2a3a4a';
 const gradient = "linear-gradient(to bottom, #b0001a, #c6001e, #e14f64)";
+
+const READ_TIME_THRESHOLD = 120;
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -90,6 +94,34 @@ const Profile = () => {
   const avatarBgColor = useColorModeValue(primaryHoverLight, primaryHoverDark);
   const textColorAvatar = useColorModeValue('gray.500', 'gray.300');
   const dateFormat = useBreakpointValue({ base: 'small', md: 'medium', lg: 'full', xl: 'full' });
+
+  const [sortOrder, setSortOrder] = useState("desc");
+
+  const hasFetched = useRef(false);
+  const [userStatus, setUserStatus] = useState(null);
+  
+  const [loading, setLoading] = useState(true);
+  const [report, setReport] = useState(null);
+  
+  useEffect(() => {
+    if (!hasFetched.current) {
+      hasFetched.current = true;
+      checkUserStatus();
+    }
+  }, []);
+
+  const checkUserStatus = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/user/status`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const data = await response.json();
+      setUserStatus(data.status);
+    } catch (error) {
+      setErrorMessage(`Error checking user status: ${error}`);
+    }
+  };
 
   const getCurrentDate = (dateFormat) => {
     const now = new Date();
@@ -216,17 +248,24 @@ const Profile = () => {
 
   const formatDate = (isoString) => {
     const date = new Date(isoString);
-    const options = { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" };
-    return date.toLocaleDateString("en-GB", options).replace(",", ""); // DD/MM/YYYY HH:MM
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
-  const [sortOrder] = useState("desc");
-  
-  const sortedInteractions = [...interactions].sort((a, b) => {
-    return sortOrder === "desc"
+  const sortedInteractions = [...interactions].sort((a, b) =>
+    sortOrder === "desc"
       ? new Date(b.interaction_timestamp) - new Date(a.interaction_timestamp)
-      : new Date(a.interaction_timestamp) - new Date(b.interaction_timestamp);
-  });
+      : new Date(a.interaction_timestamp) - new Date(b.interaction_timestamp)
+  );
+
+  const toggleSortOrder = () => {
+    setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
+  };
   
   const {
     isOpen: isInteractionModalOpen,
@@ -257,6 +296,38 @@ const Profile = () => {
       onInteractionModalClose();
     } catch (error) {
       console.error("Error deleting interaction(s):", error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchReport = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${BACKEND_URL}/user/balance-report`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setReport(data);
+      } catch (err) {
+        console.error("Error fetching report:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReport();
+  }, []);
+  
+  const getPoliticalIcon = (leaning) => {
+    const iconSize = 15;
+    switch (leaning) {
+      case "RIGHT":
+        return <GiCapitol size={iconSize} />;
+      case "LEFT":
+        return <GiBigWave size={iconSize} />;
+      case "CENTER":
+        return <GiScales size={iconSize} />;
+      default:
+        return null;
     }
   };
   
@@ -753,14 +824,137 @@ const Profile = () => {
                   </Flex>
                 </motion.div>
 
-                {/* Recent Content Section */}
+                {/* Recent Interactions Section */}
                 <motion.div
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6, duration: 0.5 }}
                 >
-                  <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Recent Recommendations</Heading>
+                  <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Recent Interactions</Heading>
                     <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">
+                      {interactions.some((i) => i.interaction_type === "like" || (i.interaction_type === "read" && i.read_time_seconds >= READ_TIME_THRESHOLD)) ? (
+                        <>
+                          <Box overflowX="auto">
+                            <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
+                              <Thead>
+                                <Tr>
+                                  <Th width="10%" textAlign="center">
+                                    <Flex align="center" justify="center">
+                                      <b>Date</b>
+                                      <IconButton
+                                        aria-label="Toggle Sort Order"
+                                        icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
+                                        size="xs"
+                                        variant="ghost"
+                                        onClick={toggleSortOrder}
+                                        ml="1"
+                                      />
+                                    </Flex>
+                                  </Th>
+                                  <Th width="40%" textAlign="center">Interacted Article</Th>
+                                  <Th width="40%" textAlign="center">Suggested News</Th>
+                                  <Th width="10%" textAlign="center">Remove</Th>
+                                </Tr>
+                              </Thead>
+                              <Tbody as={motion.tbody}>
+                                <AnimatePresence>
+                                  {sortedInteractions
+                                    .filter((interaction) => interaction.interaction_type === "like" || (interaction.interaction_type === "read" && interaction.read_time_seconds >= READ_TIME_THRESHOLD))
+                                    .slice(0, 2)
+                                    .map((interaction) => (
+                                      <motion.tr
+                                        key={interaction.id}
+                                        layout
+                                        initial={{ opacity: 0, y: 50 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -50 }}
+                                        transition={{ duration: 0.5 }}
+                                      >
+                                        <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>
+                                        {/* Interacted Article */}
+                                        <Td textAlign="justify">
+                                          <Box mb={2}>
+                                            <Text fontWeight="semibold">
+                                              <a 
+                                                href={interaction.url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                style={{ 
+                                                  color: "inherit", 
+                                                  textDecoration: "none", 
+                                                  transition: "text-decoration 0.2s ease-in-out"
+                                                }}
+                                                onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
+                                                onMouseLeave={(e) => e.target.style.textDecoration = "none"}
+                                              >
+                                                {interaction.headline || "Unknown Article"}
+                                              </a>
+                                            </Text>
+                                            <Text fontSize="sm" color="gray.500">{interaction.outlet || "Unknown Outlet"}</Text>
+                                          </Box>
+                                        </Td>
+                                        {/* Suggested News */}
+                                        <Td textAlign="justify">
+                                          {interaction.recommendations.length > 0 ? (
+                                            interaction.recommendations.map((rec, index) => (
+                                              <Box key={index} mb={2}>
+                                                <Text fontWeight="semibold">
+                                                  <a 
+                                                    href={rec.url} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer" 
+                                                    style={{ 
+                                                      color: "inherit", 
+                                                      textDecoration: "none", 
+                                                      transition: "text-decoration 0.2s ease-in-out"
+                                                    }}
+                                                    onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
+                                                    onMouseLeave={(e) => e.target.style.textDecoration = "none"}
+                                                  >
+                                                    {rec.headline}
+                                                  </a>
+                                                </Text>
+                                                <Text fontSize="sm" color="gray.500">{rec.outlet}</Text>
+                                              </Box>
+                                            ))
+                                          ) : (
+                                            <Text color="gray.400">No suggested news</Text>
+                                          )}
+                                        </Td>
+                                        <Td textAlign="center">
+                                          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                            <IconButton
+                                              icon={<FaTrashCan />}
+                                              color={primaryColor}
+                                              onClick={() => handleDeleteInteraction(interaction)}
+                                            />
+                                          </motion.div>
+                                        </Td>
+                                      </motion.tr>
+                                    ))}
+                                </AnimatePresence>
+                              </Tbody>
+                            </Table>
+                          </Box>
+                        </>
+                      ) : (
+                        <motion.div
+                          initial={{ opacity: 0, y: 15 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 15 }}
+                          transition={{ duration: 0.5 }}
+                        >
+                          <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "15vh" }}>
+                            <WarningIcon boxSize="6" color="gray.500" mb="2" />
+                            <Text fontSize="lg" color="gray.500" textAlign="center">
+                              No suggested news found.
+                            </Text>
+                            <Text fontSize="md" color="gray.400" textAlign="center">
+                              Engage with articles by liking them or spending more time reading. Horizon Explore will then provide personalized recommendations, while maintaining a balanced and diverse perspective.
+                            </Text>
+                          </Flex>
+                        </motion.div>
+                      )}
                     </Box>
                 </motion.div>
 
@@ -769,9 +963,80 @@ const Profile = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.8, duration: 0.5 }}
                 >
-                  <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Bias Insights History</Heading>
-                  <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">    
-                  </Box>
+                  {userStatus === "new" ? (
+                    <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "20vh" }}>
+                      <LockIcon boxSize="6" color="gray.500" mb="2" />
+                      <Text fontSize="lg" color="gray.500" textAlign="center">
+                        Like or read a few articles to unlock this feature.
+                      </Text>
+                      <Text fontSize="md" color="gray.400" textAlign="center" mb="2">
+                        To access your Balance Report, please interact with a few articles in Horizon Explore. Once interactions are recorded, your personalized report will be generated automatically and available here.
+                      </Text>
+                    </Flex>
+                  ) : report ? (
+                    <>
+                      <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Bias Insights History</Heading>
+                      <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">
+                        <Text fontWeight="bold" fontSize="xl" mb="2">Political Exposure</Text>    
+                        <SimpleGrid columns={{ base: 1, md: 1, lg: 3 }} spacing={4} mb="6">
+                          {["LEFT", "CENTER", "RIGHT"].map((leaning) => (
+                            <Badge
+                              key={leaning}
+                              colorScheme={leaning === "RIGHT" ? "red" : leaning === "LEFT" ? "blue" : "yellow"}
+                              p={2}
+                              display="flex"
+                              alignItems="center"
+                              gap="2"
+                              justifyContent="center"
+                              width="full"
+                          >
+                            {getPoliticalIcon(leaning)}
+                              <Text fontSize="sm" fontWeight="bold">
+                                {leaning}: {((report.interactions[leaning] / Object.values(report.interactions).reduce((a, b) => a + b, 0)) * 100).toFixed(1)}%
+                              </Text>
+                            </Badge>
+                          ))}
+                        </SimpleGrid>
+                        <Box overflowX="auto">
+                          <Text fontWeight="bold" fontSize="xl" mb="2">Reading Engagement</Text>
+                          <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
+                            <Thead>
+                              <Tr>
+                                <Th width="20%" textAlign="center">Leaning</Th>
+                                <Th width="20%" textAlign="center">Avg Read Time (s)</Th>
+                                <Th width="20%" textAlign="center">Fully Read (%)</Th>
+                                <Th width="20%" textAlign="center">Quick Reads (%)</Th>
+                                <Th width="20%" textAlign="center">Engagement Score</Th>
+                              </Tr>
+                            </Thead>
+                            <Tbody as={motion.tbody}>
+                              <AnimatePresence>
+                                {["LEFT", "CENTER", "RIGHT"].map((leaning) => (
+                                  <motion.tr
+                                    key={leaning}
+                                    layout
+                                    initial={{ opacity: 0, y: 50 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -50 }}
+                                    transition={{ duration: 0.5 }}
+                                  >
+                                    <Td fontWeight="semibold" textAlign="left">{leaning}</Td>
+                                    <Td textAlign="center">{report.avg_read_time[leaning]} sec</Td>
+                                    <Td textAlign="center">{report.engagement_metrics.fully_read[leaning]}%</Td>
+                                    <Td textAlign="center">{report.engagement_metrics.quick_reads[leaning]}%</Td>
+                                    <Td textAlign="center">{report.engagement_metrics.engagement_score[leaning]}</Td>
+                                  </motion.tr>
+                                ))}
+                              </AnimatePresence>
+                            </Tbody>
+                          </Table>
+                          
+                        </Box>
+                      </Box>
+                   </>
+                   ) : (
+                    <Text fontSize="md" color="gray.400" textAlign="center">Error loading report data.</Text>
+                  )} 
                 </motion.div>
               </Flex>
             }

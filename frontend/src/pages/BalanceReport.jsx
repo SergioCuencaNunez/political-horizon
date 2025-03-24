@@ -44,10 +44,6 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const primaryColorLight = '#c6001e';
 const primaryColorDark = '#cf2640';
-const primaryHoverLight = '#b0001a';
-const primaryHoverDark = '#d83a52';
-const primaryActiveLight = '#970016';
-const primaryActiveDark = '#e14f64';
 
 import logoBalanceBright from "../assets/logo-balance-bright.png";
 import logoBalanceDark from "../assets/logo-balance-dark.png";
@@ -62,16 +58,13 @@ const BalanceReport = () => {
   const logo = useColorModeValue(logoBalanceBright, logoBalanceDark);
   const logoHeight = useBreakpointValue({ base: '28px', md: '33px' });
 
+  const { colorMode, toggleColorMode } = useColorMode();
+
   const primaryColor = useColorModeValue(primaryColorLight, primaryColorDark);
   const cardBg = useColorModeValue("white", "gray.700");
   const modelCardBg = useColorModeValue("gray.50", "gray.800");
   const textColor = useColorModeValue("black", "white");
-  const gaugeLabelColor = useColorModeValue("black", "white");
-
-  const hoverColor = useColorModeValue(primaryHoverLight, primaryHoverDark);
-  const activeColor = useColorModeValue(primaryActiveLight, primaryActiveDark);
-  const { colorMode, toggleColorMode } = useColorMode();
-
+  
   const hasFetched = useRef(false);
   const [userStatus, setUserStatus] = useState(null);
   const [isEngagementFlipped, setIsEngagementFlipped] = useState(false);
@@ -468,6 +461,26 @@ const BalanceReport = () => {
                           <Tooltip
                             formatter={(value) => `${value} sec`}
                             labelFormatter={(label) => `Outlet: ${label}`}
+                            cursor={{
+                              fill: useColorModeValue("#A0AEC0", "#CBD5E0"),
+                              fillOpacity: 0.2,
+                            }}
+                            contentStyle={{
+                              backgroundColor: useColorModeValue("#ffffff", "#1A202C"),
+                              color: useColorModeValue("#1A202C", "#EDF2F7"),
+                              border: "1px solid",
+                              borderColor: useColorModeValue("#CBD5E0", "#4A5568"),
+                              borderRadius: "6px",
+                              fontSize: "14px",
+                            }}
+                            labelStyle={{
+                              color: useColorModeValue("#2D3748", "#E2E8F0"),
+                              fontWeight: "bold",
+                            }}
+                            itemStyle={{
+                              color: useColorModeValue("#2D3748", "#E2E8F0"),
+                              fontSize: "13px",
+                            }}
                           />
                           <Bar
                             dataKey="time_read_seconds"
@@ -500,7 +513,28 @@ const BalanceReport = () => {
                               <PolarGrid stroke={gridColor} strokeDasharray="3 3"/>
                               <PolarAngleAxis dataKey="outlet" stroke={axisColor} tick={xAxisTickProps} />
                               <PolarRadiusAxis stroke={axisColor} tick={{ fontSize: 12 }} />
-                              <Tooltip />
+                              <Tooltip
+                                cursor={{
+                                  fill: useColorModeValue("#A0AEC0", "#CBD5E0"),
+                                  fillOpacity: 0.2,
+                                }}
+                                contentStyle={{
+                                  backgroundColor: useColorModeValue("#ffffff", "#1A202C"),
+                                  color: useColorModeValue("#1A202C", "#EDF2F7"),
+                                  border: "1px solid",
+                                  borderColor: useColorModeValue("#CBD5E0", "#4A5568"),
+                                  borderRadius: "6px",
+                                  fontSize: "14px",
+                                }}
+                                labelStyle={{
+                                  color: useColorModeValue("#2D3748", "#E2E8F0"),
+                                  fontWeight: "bold",
+                                }}
+                                itemStyle={{
+                                  color: useColorModeValue("#2D3748", "#E2E8F0"),
+                                  fontSize: "13px",
+                                }}
+                              />
                               <Radar
                                 name="Exposure"
                                 dataKey="count"
@@ -517,7 +551,14 @@ const BalanceReport = () => {
                           </Text>
                         </>
                       ) : (
-                        <Text textAlign="center" mt={6}> Not enough data for radar chart</Text>
+                        <>
+                          <Flex align="center" justify="center" direction="column">
+                            <LockIcon boxSize="6" color="gray.500" mb="2" />
+                            <Text fontSize="md" color="gray.500" textAlign="center">
+                              In order to provide a more detailed analysis of your source diversity, please interact with more articles.
+                            </Text>
+                          </Flex>
+                        </>
                       )}
                     </Box>
                   </Stack>
@@ -584,6 +625,7 @@ const BalanceReport = () => {
               >
                 <Box mb="4">
                 <GaugeComponent
+                  key={colorMode}
                   type="semicircle"
                   value={report.balance_score * 100}
                   minValue={0}
@@ -613,7 +655,7 @@ const BalanceReport = () => {
                     valueLabel: {
                       formatTextValue: (value) => `${value.toFixed(1)}%`,
                       style: {
-                        fill: gaugeLabelColor,
+                        fill: useColorModeValue("black", "white"),
                         fontWeight: "bold",
                         fontSize: "26px",
                         textShadow: "none",
@@ -627,8 +669,8 @@ const BalanceReport = () => {
                         { value: 100, label: "100%" },
                       ],
                       style: {
-                        fill: "#888",
-                        fontSize: "15px",
+                        fill: gridColor,
+                        fontSize: "14px",
                         textShadow: "none",
                       },
                     },
@@ -639,7 +681,7 @@ const BalanceReport = () => {
               </motion.div>
             </>
           ) : (
-            <Text>Error loading report data.</Text>
+            <Text fontSize="md" color="gray.400" textAlign="center">Error loading report data.</Text>
           )}
 
           {/* Transparency Section */}
