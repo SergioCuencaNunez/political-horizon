@@ -167,3 +167,6 @@ cython_debug/
 # Git LFS local files for the moment
 backend/data/*
 backend/db/*
+
+# Node modules
+frontend/node_modules/
