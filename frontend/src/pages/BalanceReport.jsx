@@ -82,6 +82,11 @@ const BalanceReport = () => {
   const [showTransparency, setShowTransparency] = useState(false);
   const toggleTransparency = () => setShowTransparency(!showTransparency);
 
+  const lockText = useBreakpointValue({
+    base: "To access your Balance Report, please interact with a few articles in Horizon Explore.",
+    lg: "To access your Balance Report, please interact with a few articles in Horizon Explore. Once interactions are recorded, your personalized report will be generated automatically and available here."
+  });
+
   const transparencyText = useBreakpointValue({
     base: "Horizon Balance generates this report based on your interactions with Horizon Explore and the news recommendations you've received.",
     lg: "Horizon Balance generates this comprehensive report by analyzing your interactions within Horizon Explore, including how you engage with recommended articles. It helps you to better understand your news consumption patterns.",
@@ -92,11 +97,44 @@ const BalanceReport = () => {
   });
 
   useEffect(() => {
-      if (!hasFetched.current) {
-        hasFetched.current = true;
-        checkUserStatus();
-      }
-    }, []);
+    if (!hasFetched.current) {
+      hasFetched.current = true;
+      checkUserStatus();
+    }
+  }, []);
+
+  const isReportAvailable = (report) => {
+    return (
+      report &&
+      typeof report === "object" &&
+      report.interactions &&
+      ["LEFT", "CENTER", "RIGHT"].every((key) =>
+        typeof report.interactions[key] === "number"
+      ) &&
+      report.avg_read_time &&
+      ["LEFT", "CENTER", "RIGHT"].every((key) =>
+        typeof report.avg_read_time[key] === "number"
+      ) &&
+      report.engagement_metrics &&
+      report.engagement_metrics.fully_read &&
+      report.engagement_metrics.quick_reads &&
+      report.engagement_metrics.engagement_score &&
+      ["LEFT", "CENTER", "RIGHT"].every((key) =>
+        typeof report.engagement_metrics.fully_read[key] === "number" &&
+        typeof report.engagement_metrics.quick_reads[key] === "number" &&
+        typeof report.engagement_metrics.engagement_score[key] === "number"
+      ) &&
+      Array.isArray(report.time_read_per_outlet) &&
+      report.time_read_per_outlet.length > 0 &&
+      Array.isArray(report.most_frequented_sources) &&
+      report.most_frequented_sources.length > 0 &&
+      typeof report.balance_score === "number" &&
+      typeof report.balance_message === "string" &&
+      typeof report.reading_behavior_message === "string" &&
+      typeof report.shannon_entropy === "number" &&
+      typeof report.kl_divergence === "number"
+    );
+  };  
 
   const checkUserStatus = async () => {
     setLoading(true);
@@ -174,11 +212,12 @@ const BalanceReport = () => {
     "ABC News": "#FAF089",
     "CBS News": "#FAF089",
     "NBC News": "#FAF089",
-    "The Guardian": "#90cdf4",
-    "The New York Times": "#90cdf4",
-    "HuffPost": "#90cdf4",
-    "Los Angeles Times": "#90cdf4",
-    "NPR": "#90cdf4",
+    "The Guardian": "#90CDF4",
+    "The New York Times": "#90CDF4",
+    "HuffPost": "#90CDF4",
+    "Los Angeles Times": "#90CDF4",
+    "NPR": "#90CDF4",
+    "Slate": "#90CDF4",
   };
 
   const topOutletData = report?.most_frequented_sources?.length
@@ -266,21 +305,19 @@ const BalanceReport = () => {
               <Spinner size="xl" />
             <Text ml="4">Loading balance report details...</Text>
           </Flex>
-          ) : userStatus === "new" ? (
+          ) : userStatus === "new" || !isReportAvailable(report) ? (
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 15 }}
               transition={{ duration: 0.5 }}
             >
-              <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "20vh" }}>
+              <Flex align="center" justify="center" direction="column" h={{ base: "20vh", md: "18vh" }}>
                 <LockIcon boxSize="6" color="gray.500" mb="2" />
                 <Text fontSize="lg" color="gray.500" textAlign="center">
                   Like or read a few articles to unlock this feature.
                 </Text>
-                <Text fontSize="md" color="gray.400" textAlign="center" mb="2">
-                  To access your Balance Report, please interact with a few articles in Horizon Explore. Once interactions are recorded, your personalized report will be generated automatically and available here.
-                </Text>
+                <Text fontSize="md" color="gray.400" textAlign="center">{lockText}</Text>
               </Flex>
             </motion.div>
           ) : report ? (

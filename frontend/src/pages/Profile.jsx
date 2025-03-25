@@ -29,11 +29,10 @@ import {
   ModalBody,
   ModalCloseButton,
 } from "@chakra-ui/react";
-import { SunIcon, MoonIcon, ChevronDownIcon, CheckCircleIcon, WarningIcon, WarningTwoIcon, InfoIcon } from "@chakra-ui/icons";
+import { SunIcon, MoonIcon, ChevronDownIcon, WarningIcon, LockIcon } from "@chakra-ui/icons";
 import {
   FaUser,
   FaNewspaper,
-  FaShieldAlt,
   FaSignOutAlt,
   FaCompass,
   FaEye,
@@ -50,6 +49,8 @@ import GaugeComponent from "react-gauge-component";
 
 import logoBright from '../assets/logo-bright.png';
 import logoDark from '../assets/logo-dark.png';
+
+import BlurOverlay from "../components/BlurOverlay";
 
 import BrowseFeed from "./BrowseFeed";
 import MyInteractions from "./MyInteractions";
@@ -108,6 +109,8 @@ const Profile = () => {
   const [report, setReport] = useState(null);
 
   const gridColor = useColorModeValue("#B0B0B0", "#888888");
+
+  const [reportRefreshTrigger, setReportRefreshTrigger] = useState(0);
   
   useEffect(() => {
     if (!hasFetched.current) {
@@ -244,6 +247,7 @@ const Profile = () => {
 
       if (response.ok) {
         setInteractions((prev) => prev.filter((interaction) => interaction.id !== id));
+        setReportRefreshTrigger(prev => prev + 1);
       } else {
         console.error("Failed to delete interaction.");
       }
@@ -321,7 +325,7 @@ const Profile = () => {
       }
     };
     fetchReport();
-  }, []);
+  }, [reportRefreshTrigger]);
   
   const getPoliticalIcon = (leaning) => {
     const iconSize = 15;
@@ -758,7 +762,8 @@ const Profile = () => {
                       transition={{ type: "spring", stiffness: 300, damping: 20 }}
                       style={{ flex: "1 1 calc(33.333% - 1rem)", minWidth: "250px" }}
                     >
-                      <Box 
+                      <Box
+                        position="relative"  
                         bg={cardBg} 
                         p="5" 
                         borderRadius="md"
@@ -776,6 +781,11 @@ const Profile = () => {
                       >
                         <Heading size="md" mb="4">Recommendations Over Time</Heading>
                         <RecommendationsLineChart interactions={interactions} />
+                        {interactions.filter((i) =>
+                          i.interaction_type === "like" || (i.interaction_type === "read" && i.read_time_seconds >= READ_TIME_THRESHOLD)
+                        ).map(i => i.interaction_timestamp.split("T")[0]).filter((v, i, arr) => arr.indexOf(v) === i).length < 2 && (
+                          <BlurOverlay message="At least two days of data are required to visualize trends." />
+                        )}
                       </Box>
                     </motion.div>
                     <motion.div
@@ -785,6 +795,7 @@ const Profile = () => {
                       style={{ flex: "1 1 calc(33.333% - 1rem)", minWidth: "250px" }}
                     >
                       <Box 
+                        position="relative" 
                         bg={cardBg} 
                         p="5" 
                         borderRadius="md"
@@ -802,6 +813,10 @@ const Profile = () => {
                       >
                         <Heading size="md" mb="4">Interactions Statistics</Heading>
                         <InteractionsStatistics interactions={interactions} />
+
+                        {userStatus === "new" && (
+                          <BlurOverlay message="Interact with a few articles to unlock this section." />
+                        )}
                       </Box>
                     </motion.div>
                   </Flex>
@@ -946,140 +961,140 @@ const Profile = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.8, duration: 0.5 }}
                 >
+                  <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Bias Insights History</Heading>
+                  <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">
                   {userStatus === "new" ? (
                     <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "20vh" }}>
                       <LockIcon boxSize="6" color="gray.500" mb="2" />
                       <Text fontSize="lg" color="gray.500" textAlign="center">
                         Like or read a few articles to unlock this feature.
                       </Text>
-                      <Text fontSize="md" color="gray.400" textAlign="center" mb="2">
-                        To access your Balance Report, please interact with a few articles in Horizon Explore. Once interactions are recorded, your personalized report will be generated automatically and available here.
+                      <Text fontSize="md" color="gray.400" textAlign="center">
+                        To access Horizon Balance bias insights, please interact with a few articles. Once interactions are recorded, your personalized report will be generated automatically and available here.
                       </Text>
                     </Flex>
                   ) : report ? (
                     <>
-                      <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Bias Insights History</Heading>
-                      <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">
-                        <Text fontWeight="bold" fontSize="xl" mb="2">Political Exposure</Text>    
-                        <SimpleGrid columns={{ base: 1, md: 1, lg: 3 }} spacing={4} mb="6">
-                          {["LEFT", "CENTER", "RIGHT"].map((leaning) => (
-                            <Badge
-                              key={leaning}
-                              colorScheme={leaning === "RIGHT" ? "red" : leaning === "LEFT" ? "blue" : "yellow"}
-                              p={2}
-                              display="flex"
-                              alignItems="center"
-                              gap="2"
-                              justifyContent="center"
-                              width="full"
-                          >
-                            {getPoliticalIcon(leaning)}
-                              <Text fontSize="sm" fontWeight="bold">
-                                {leaning}: {((report.interactions[leaning] / Object.values(report.interactions).reduce((a, b) => a + b, 0)) * 100).toFixed(1)}%
-                              </Text>
-                            </Badge>
-                          ))}
-                        </SimpleGrid>
-                        <Box overflowX="auto">
-                          <Text fontWeight="bold" fontSize="xl" mb="2">Reading Engagement</Text>
-                          <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
-                            <Thead>
-                              <Tr>
-                                <Th width="20%" textAlign="center">Leaning</Th>
-                                <Th width="20%" textAlign="center">Avg Read Time (s)</Th>
-                                <Th width="20%" textAlign="center">Fully Read (%)</Th>
-                                <Th width="20%" textAlign="center">Quick Reads (%)</Th>
-                                <Th width="20%" textAlign="center">Engagement Score</Th>
-                              </Tr>
-                            </Thead>
-                            <Tbody as={motion.tbody}>
-                              <AnimatePresence>
-                                {["LEFT", "CENTER", "RIGHT"].map((leaning) => (
-                                  <motion.tr
-                                    key={leaning}
-                                    layout
-                                    initial={{ opacity: 0, y: 50 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -50 }}
-                                    transition={{ duration: 0.5 }}
-                                  >
-                                    <Td fontWeight="semibold" textAlign="left">{leaning}</Td>
-                                    <Td textAlign="center">{report.avg_read_time[leaning]} sec</Td>
-                                    <Td textAlign="center">{report.engagement_metrics.fully_read[leaning]}%</Td>
-                                    <Td textAlign="center">{report.engagement_metrics.quick_reads[leaning]}%</Td>
-                                    <Td textAlign="center">{report.engagement_metrics.engagement_score[leaning]}</Td>
-                                  </motion.tr>
-                                ))}
-                              </AnimatePresence>
-                            </Tbody>
-                          </Table>
-                        </Box>
-                        <Text fontWeight="bold" fontSize="xl" mb="2">Balance Score</Text>    
-                        <GaugeComponent
-                          key={colorMode}
-                          type="semicircle"
-                          value={report.balance_score * 100}
-                          minValue={0}
-                          maxValue={100}
-                          style={{ width: "100%", maxWidth: "350px", margin: "0 auto" }}
-                          arc={{
-                            width: 0.3,
-                            padding: 0.015,
-                            cornerRadius: 3,
-                            subArcs: [                    
-                              { limit: 30, color: "#FEB2B2" },
-                              { limit: 60, color: "#FBD38D" },
-                              { limit: 100, color: "#9AE6B4" },
-                            ],
-                          }}
-                          pointer={{
-                            type: "blob",
-                            color: "#222",
-                            baseColor: "#fff",
-                            strokeWidth: 2,
-                            width: 25,
-                            length: 0.45,
-                            animate: true,
-                            animationDuration: 2000,
-                          }}
-                          labels={{
-                            valueLabel: {
-                              formatTextValue: (value) => `${value.toFixed(1)}%`,
-                              style: {
-                                fill: textColor,
-                                fontWeight: "bold",
-                                fontSize: "26px",
-                                textShadow: "none",
-                              },
-                            },
-                            tickLabels: {
-                              type: "outer",
-                              ticks: [
-                                { value: 0, label: "0%" },
-                                { value: 50, label: "50%" },
-                                { value: 100, label: "100%" },
-                              ],
-                              style: {
-                                fill: gridColor,
-                                fontSize: "14px",
-                                textShadow: "none",
-                              },
-                            },
-                          }}
-                        />
-                        <Text textAlign="center">{report.balance_message}</Text>
+                      <Text fontWeight="bold" fontSize="xl" mb="2">Political Exposure</Text>    
+                      <SimpleGrid columns={{ base: 1, md: 1, lg: 3 }} spacing={4} mb="6">
+                        {["LEFT", "CENTER", "RIGHT"].map((leaning) => (
+                          <Badge
+                            key={leaning}
+                            colorScheme={leaning === "RIGHT" ? "red" : leaning === "LEFT" ? "blue" : "yellow"}
+                            p={2}
+                            display="flex"
+                            alignItems="center"
+                            gap="2"
+                            justifyContent="center"
+                            width="full"
+                        >
+                          {getPoliticalIcon(leaning)}
+                            <Text fontSize="sm" fontWeight="bold">
+                              {leaning}: {((report.interactions[leaning] / Object.values(report.interactions).reduce((a, b) => a + b, 0)) * 100).toFixed(1)}%
+                            </Text>
+                          </Badge>
+                        ))}
+                      </SimpleGrid>
+                      <Box overflowX="auto">
+                        <Text fontWeight="bold" fontSize="xl" mb="2">Reading Engagement</Text>
+                        <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
+                          <Thead>
+                            <Tr>
+                              <Th width="20%" textAlign="center">Leaning</Th>
+                              <Th width="20%" textAlign="center">Avg Read Time (s)</Th>
+                              <Th width="20%" textAlign="center">Fully Read (%)</Th>
+                              <Th width="20%" textAlign="center">Quick Reads (%)</Th>
+                              <Th width="20%" textAlign="center">Engagement Score</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody as={motion.tbody}>
+                            <AnimatePresence>
+                              {["LEFT", "CENTER", "RIGHT"].map((leaning) => (
+                                <motion.tr
+                                  key={leaning}
+                                  layout
+                                  initial={{ opacity: 0, y: 50 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -50 }}
+                                  transition={{ duration: 0.5 }}
+                                >
+                                  <Td fontWeight="semibold" textAlign="left">{leaning}</Td>
+                                  <Td textAlign="center">{report.avg_read_time[leaning]} sec</Td>
+                                  <Td textAlign="center">{report.engagement_metrics.fully_read[leaning]}%</Td>
+                                  <Td textAlign="center">{report.engagement_metrics.quick_reads[leaning]}%</Td>
+                                  <Td textAlign="center">{report.engagement_metrics.engagement_score[leaning]}</Td>
+                                </motion.tr>
+                              ))}
+                            </AnimatePresence>
+                          </Tbody>
+                        </Table>
                       </Box>
+                      <Text fontWeight="bold" fontSize="xl" mb="2">Balance Score</Text>    
+                      <GaugeComponent
+                        key={colorMode}
+                        type="semicircle"
+                        value={report.balance_score * 100}
+                        minValue={0}
+                        maxValue={100}
+                        style={{ width: "100%", maxWidth: "350px", margin: "0 auto" }}
+                        arc={{
+                          width: 0.3,
+                          padding: 0.015,
+                          cornerRadius: 3,
+                          subArcs: [                    
+                            { limit: 30, color: "#FEB2B2" },
+                            { limit: 60, color: "#FBD38D" },
+                            { limit: 100, color: "#9AE6B4" },
+                          ],
+                        }}
+                        pointer={{
+                          type: "blob",
+                          color: "#222",
+                          baseColor: "#fff",
+                          strokeWidth: 2,
+                          width: 25,
+                          length: 0.45,
+                          animate: true,
+                          animationDuration: 2000,
+                        }}
+                        labels={{
+                          valueLabel: {
+                            formatTextValue: (value) => `${value.toFixed(1)}%`,
+                            style: {
+                              fill: textColor,
+                              fontWeight: "bold",
+                              fontSize: "26px",
+                              textShadow: "none",
+                            },
+                          },
+                          tickLabels: {
+                            type: "outer",
+                            ticks: [
+                              { value: 0, label: "0%" },
+                              { value: 50, label: "50%" },
+                              { value: 100, label: "100%" },
+                            ],
+                            style: {
+                              fill: gridColor,
+                              fontSize: "14px",
+                              textShadow: "none",
+                            },
+                          },
+                        }}
+                      />
+                      <Text textAlign="center">{report.balance_message}</Text>
                    </>
                    ) : (
                     <Text fontSize="md" color="gray.400" textAlign="center">Error loading report data.</Text>
                   )} 
+                  </Box>
                 </motion.div>
               </Flex>
             }
           />
           <Route
             path="/browse-feed"
-            element={<BrowseFeed/>}
+            element={<BrowseFeed setReportRefreshTrigger={setReportRefreshTrigger} />}
             />
           <Route
             path="/my-interactions"

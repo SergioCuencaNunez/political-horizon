@@ -42,8 +42,8 @@ const primaryActiveDark = '#e14f64';
 import logoExploreBright from "../assets/logo-explore-bright.png";
 import logoExploreDark from "../assets/logo-explore-dark.png";
 
-const BrowseFeed = () => {
-  // For development only
+const BrowseFeed = ({ setReportRefreshTrigger }) => {
+    // For development only
   const BACKEND_URL_DB = `${window.location.protocol}//${window.location.hostname}:5001`;
   const BACKEND_URL_API = `${window.location.protocol}//${window.location.hostname}:5002`;
 
@@ -187,12 +187,7 @@ const BrowseFeed = () => {
       });
       const data = await response.json();
       setUserStatus(data.status);
-      if (data.status === "new") {
-        fetchRandomArticles();
-      } else {
-        setArticles([]);
-        fetchRecommendations();
-      }
+      fetchRandomArticles();
     } catch (error) {
       setErrorMessage(`Error checking user status: ${error}`);
     }
@@ -208,23 +203,6 @@ const BrowseFeed = () => {
       setArticles(data);
     } catch (error) {
       setErrorMessage(`Error fetching random articles: ${error}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchRecommendations = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`${BACKEND_URL_DB}/articles/recommended`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      if (!response.ok) throw new Error("Failed to fetch recommendations.");
-      const data = await response.json();
-      setArticles([]);
-      setArticles(data);
-    } catch (error) {
-      setErrorMessage(`Error fetching recommendations: ${error}`);
     } finally {
       setLoading(false);
     }
@@ -288,7 +266,7 @@ const BrowseFeed = () => {
       if (!prevInteraction) {
         setInteractionsCount((prev) => prev + 1);
       }
-  
+      setReportRefreshTrigger(prev => prev + 1);
     } catch (error) {
       setErrorMessage(`Error storing interaction: ${error}`);
     }
@@ -313,7 +291,7 @@ const BrowseFeed = () => {
       try {
         const token = localStorage.getItem("token");
         
-        const response = await fetch(`${BACKEND_URL_API}/user/generate-recommendations`, {
+        const response = await fetch(`${BACKEND_URL_API}/user/recommendations`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -331,6 +309,7 @@ const BrowseFeed = () => {
   
         if (result.success && result.recommendations.length > 0) {
           setArticles(result.recommendations);
+          setReportRefreshTrigger(prev => prev + 1);
           
           const statusResponse = await fetch(`${BACKEND_URL_DB}/user/status`, {
             headers: { Authorization: `Bearer ${token}` },

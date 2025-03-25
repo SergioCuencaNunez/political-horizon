@@ -38,7 +38,7 @@ def verify_token(func):
     return wrapper
 
 # Generates personalized recommendations based on user's interactions
-@app.route("/user/generate-recommendations", methods=["POST"])
+@app.route("/user/recommendations", methods=["POST"])
 @verify_token
 def generate_recommendations():
     user_id = request.user.get("id")
@@ -52,15 +52,20 @@ def generate_recommendations():
         # Get the last recommendation request timestamp
         cursor.execute("SELECT last_recommendation_timestamp FROM users WHERE id = ?", (user_id,))
         last_recommendation_time = cursor.fetchone()
-        last_recommendation_time = last_recommendation_time[0] if last_recommendation_time and last_recommendation_time[0] else \
-            (datetime.now(timezone.utc) - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+        last_recommendation_time = last_recommendation_time[0] if last_recommendation_time and last_recommendation_time[0] else None
 
-        # Fetch only NEW interactions since the last recommendation request
-        cursor.execute("""
-            SELECT id, interaction_type, read_time_seconds 
-            FROM user_interactions 
-            WHERE user_id = ? AND interaction_timestamp > ?
-        """, (user_id, last_recommendation_time))
+        if last_recommendation_time:
+            cursor.execute("""
+                SELECT id, interaction_type, read_time_seconds 
+                FROM user_interactions 
+                WHERE user_id = ? AND interaction_timestamp > ?
+            """, (user_id, last_recommendation_time))
+        else:
+            cursor.execute("""
+                SELECT id, interaction_type, read_time_seconds 
+                FROM user_interactions 
+                WHERE user_id = ?
+            """, (user_id,))
 
         interactions = cursor.fetchall()
         recommendations = []

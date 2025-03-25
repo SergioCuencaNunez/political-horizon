@@ -371,7 +371,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                   exit={{ opacity: 0, y: 15 }}
                   transition={{ duration: 0.5 }}
                 >
-                  <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "15vh" }}>
+                  <Flex align="center" justify="center" direction="column" h={{ base: "20vh", md: "18vh" }}>
                     <WarningIcon boxSize="6" color="gray.500" mb="2" />
                     <Text fontSize="lg" color="gray.500" textAlign="center">
                       No suggested news found.
@@ -552,7 +552,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                 exit={{ opacity: 0, y: 15 }}
                 transition={{ duration: 0.5 }}
               >
-                <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "15vh" }}>
+                <Flex align="center" justify="center" direction="column" h={{ base: "20vh", md: "18vh" }}>
                   <WarningIcon boxSize="6" color="gray.500" mb="2" />
                   <Text fontSize="lg" color="gray.500" textAlign="center">
                     No less relevant news found.

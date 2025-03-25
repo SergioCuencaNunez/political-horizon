@@ -352,27 +352,27 @@ app.get("/articles/random", verifyToken, (req, res) => {
     if (userLeaning === "RIGHT") oppositeLeanings = ["CENTER", "LEFT"];
     if (userLeaning === "CENTER") oppositeLeanings = ["LEFT", "RIGHT"];
 
-    // Query to get 6 articles from user's leaning
+    // Query to get 4 articles from user's leaning
     const queryMain = `
       SELECT * FROM news_articles 
       WHERE political_leaning = ?
       ORDER BY RANDOM()
-      LIMIT 6;
+      LIMIT 4;
     `;
 
-    // Query to get 2 articles from each opposite leaning
+    // Query to get 3 articles from each opposite leaning
     const queryOpposite1 = `
       SELECT * FROM news_articles 
       WHERE political_leaning = ?
       ORDER BY RANDOM()
-      LIMIT 2;
+      LIMIT 3;
     `;
 
     const queryOpposite2 = `
       SELECT * FROM news_articles 
       WHERE political_leaning = ?
       ORDER BY RANDOM()
-      LIMIT 2;
+      LIMIT 3;
     `;
 
     db.all(queryMain, [userLeaning], (err1, mainArticles) => {
@@ -394,20 +394,6 @@ app.get("/articles/random", verifyToken, (req, res) => {
         });
       });
     });
-  });
-});
-
-// Fetch stored recommendations for returning users
-app.get("/articles/recommended", verifyToken, (req, res) => {
-  const query = `
-    SELECT * FROM user_recommendations 
-    WHERE user_id = ? AND interaction_type IN ('like', 'read')
-    ORDER BY date_publish DESC;
-  `;
-
-  db.all(query, [req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: "Failed to fetch recommendations" });
-    res.json(rows);
   });
 });
 
