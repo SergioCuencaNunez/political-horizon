@@ -42,6 +42,8 @@ import GaugeComponent from "react-gauge-component";
 import { GiCapitol, GiBigWave, GiScales } from "react-icons/gi";
 import { motion, AnimatePresence } from "framer-motion";
 
+import BlurOverlay from "../components/BlurOverlay";
+
 import logoBalanceBright from "../assets/logo-balance-bright.png";
 import logoBalanceDark from "../assets/logo-balance-dark.png";
 
@@ -83,8 +85,8 @@ const BalanceReport = () => {
   const toggleTransparency = () => setShowTransparency(!showTransparency);
 
   const lockText = useBreakpointValue({
-    base: "To access your Balance Report, please interact with a few articles in Horizon Explore.",
-    lg: "To access your Balance Report, please interact with a few articles in Horizon Explore. Once interactions are recorded, your personalized report will be generated automatically and available here."
+    base: "To access your Horizon Balance Report, please interact with a few articles.",
+    lg: "To access your Horizon Balance Report, please interact with a few articles. Once interactions are recorded, your personalized report will be generated automatically and available here."
   });
 
   const transparencyText = useBreakpointValue({
@@ -103,38 +105,7 @@ const BalanceReport = () => {
     }
   }, []);
 
-  const isReportAvailable = (report) => {
-    return (
-      report &&
-      typeof report === "object" &&
-      report.interactions &&
-      ["LEFT", "CENTER", "RIGHT"].every((key) =>
-        typeof report.interactions[key] === "number"
-      ) &&
-      report.avg_read_time &&
-      ["LEFT", "CENTER", "RIGHT"].every((key) =>
-        typeof report.avg_read_time[key] === "number"
-      ) &&
-      report.engagement_metrics &&
-      report.engagement_metrics.fully_read &&
-      report.engagement_metrics.quick_reads &&
-      report.engagement_metrics.engagement_score &&
-      ["LEFT", "CENTER", "RIGHT"].every((key) =>
-        typeof report.engagement_metrics.fully_read[key] === "number" &&
-        typeof report.engagement_metrics.quick_reads[key] === "number" &&
-        typeof report.engagement_metrics.engagement_score[key] === "number"
-      ) &&
-      Array.isArray(report.time_read_per_outlet) &&
-      report.time_read_per_outlet.length > 0 &&
-      Array.isArray(report.most_frequented_sources) &&
-      report.most_frequented_sources.length > 0 &&
-      typeof report.balance_score === "number" &&
-      typeof report.balance_message === "string" &&
-      typeof report.reading_behavior_message === "string" &&
-      typeof report.shannon_entropy === "number" &&
-      typeof report.kl_divergence === "number"
-    );
-  };  
+  const isReportAvailable = (report) => !!report && typeof report === "object";
 
   const checkUserStatus = async () => {
     setLoading(true);
@@ -501,61 +472,74 @@ const BalanceReport = () => {
                   <Heading size="md" mb="4">Source Diversity</Heading>  
                   <Stack direction={{ base: "column", xl: "row" }} spacing={3}>
                     <Box flex="1" minW="0">
-                      <ResponsiveContainer width="100%" height={400}>
-                        <BarChart data={report.time_read_per_outlet}>
-                          <CartesianGrid stroke={gridColor} strokeDasharray="3 3" />
-                          <XAxis dataKey="outlet"
-                            stroke={axisColor}
-                            interval={0}
-                            angle={xAxisAngle}
-                            textAnchor={xAxisAngle ? "end" : "middle"}
-                            height={xAxisAngle ? 60 : 30}
-                            fontSize={xAxisFontSize}
-                            fontWeight= "bold"
-                            fill= {textColor}
-                            tickFormatter={(name) => name.length > 15 ? name.slice(0, 10) + "…" : name}
-                          />
-                          <YAxis stroke={axisColor} />
-                          <Tooltip
-                            formatter={(value) => `${value} sec`}
-                            labelFormatter={(label) => `Outlet: ${label}`}
-                            cursor={{
-                              fill: fillColor,
-                              fillOpacity: 0.2,
-                            }}
-                            contentStyle={{
-                              backgroundColor: backgroundColor,
-                              color: graphColor,
-                              border: "1px solid",
-                              borderColor: borderColor,
-                              borderRadius: "6px",
-                              fontSize: "14px",
-                            }}
-                            labelStyle={{
-                              color: labelColor,
-                              fontWeight: "bold",
-                            }}
-                            itemStyle={{
-                              color: labelColor,
-                              fontSize: "13px",
-                            }}
-                          />
-                          <Bar
-                            dataKey="time_read_seconds"
-                            barSize={Math.min(150, 300 / report.time_read_per_outlet.length)}
-                          >
-                            {report.time_read_per_outlet.map((source, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={outletColors[source.outlet] || "#ccc"}
+                      {report.time_read_per_outlet?.length > 0 ? (
+                        <> 
+                          <ResponsiveContainer width="100%" height={400}>
+                            <BarChart data={report.time_read_per_outlet}>
+                              <CartesianGrid stroke={gridColor} strokeDasharray="3 3" />
+                              <XAxis dataKey="outlet"
+                                stroke={axisColor}
+                                interval={0}
+                                angle={xAxisAngle}
+                                textAnchor={xAxisAngle ? "end" : "middle"}
+                                height={xAxisAngle ? 60 : 30}
+                                fontSize={xAxisFontSize}
+                                fontWeight= "bold"
+                                fill= {textColor}
+                                tickFormatter={(name) => name.length > 15 ? name.slice(0, 10) + "…" : name}
                               />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                      <Text fontSize="md" textAlign="justify">
-                        {`${report.time_read_per_outlet[0].outlet} is the source you spend the most time reading, with a total of ${report.time_read_per_outlet[0].time_read_seconds} seconds.`}
-                      </Text>
+                              <YAxis stroke={axisColor} />
+                              <Tooltip
+                                formatter={(value) => `${value} sec`}
+                                labelFormatter={(label) => `Outlet: ${label}`}
+                                cursor={{
+                                  fill: fillColor,
+                                  fillOpacity: 0.2,
+                                }}
+                                contentStyle={{
+                                  backgroundColor: backgroundColor,
+                                  color: graphColor,
+                                  border: "1px solid",
+                                  borderColor: borderColor,
+                                  borderRadius: "6px",
+                                  fontSize: "14px",
+                                }}
+                                labelStyle={{
+                                  color: labelColor,
+                                  fontWeight: "bold",
+                                }}
+                                itemStyle={{
+                                  color: labelColor,
+                                  fontSize: "13px",
+                                }}
+                              />
+                              <Bar
+                                dataKey="time_read_seconds"
+                                barSize={Math.min(150, 300 / report.time_read_per_outlet.length)}
+                              >
+                                {report.time_read_per_outlet.map((source, index) => (
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={outletColors[source.outlet] || "#ccc"}
+                                  />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                          <Text fontSize="md" textAlign="justify">
+                            {`${report.time_read_per_outlet[0].outlet} is the source you spend the most time reading, with a total of ${report.time_read_per_outlet[0].time_read_seconds} seconds.`}
+                          </Text>
+                        </>
+                      ) : (
+                        <>
+                          <Flex align="center" justify="center" direction="column" height={200}>
+                            <LockIcon boxSize="6" color="gray.500" mb="2" />
+                            <Text fontSize="md" color="gray.500" textAlign="center">
+                              In order to provide a more detailed analysis of your source diversity, please read some articles.
+                            </Text>
+                          </Flex>
+                        </>
+                      )}                          
                     </Box>
 
                     <Box flex="1" minW="0">
@@ -610,7 +594,7 @@ const BalanceReport = () => {
                         </>
                       ) : (
                         <>
-                          <Flex align="center" justify="center" direction="column">
+                          <Flex align="center" justify="center" direction="column" height={200}>
                             <LockIcon boxSize="6" color="gray.500" mb="2" />
                             <Text fontSize="md" color="gray.500" textAlign="center">
                               In order to provide a more detailed analysis of your source diversity, please interact with more articles.

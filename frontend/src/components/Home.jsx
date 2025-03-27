@@ -63,7 +63,7 @@ const Home = () => {
   });
 
   const discoverTextLg = useBreakpointValue({
-    lg: "With Political Horizon, users experience a uniquely balanced news environment, continuously evaluated using metrics like Shannon entropy and the Gini index. Whether you lean left, right, or center, our system ensures a fair and transparent approach to news consumption, empowering you with comprehensive perspectives."
+    lg: "With Political Horizon, users experience a uniquely balanced news environment, continuously evaluated using metrics like Shannon Entropy and the KL Divergence. Whether you lean left, right, or center, our system ensures a fair and transparent approach to news consumption, empowering you with comprehensive perspectives."
   });
 
   

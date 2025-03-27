@@ -463,11 +463,11 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
         if (interactionType === "read" && readTime > 0) {
           totalReadTime[leaning] += readTime;
           readCounts[leaning] += 1;
-          if (readTime >= 60) fullyReadCount[leaning]++;
-          else if (readTime < 60) quickReadCount[leaning]++;
+          if (readTime >= 90) fullyReadCount[leaning]++;
+          else if (readTime < 90) quickReadCount[leaning]++;
         }
 
-        const timeWeight = interactionType === "like" ? 60 : Math.max(10, Math.min(180, readTime || 0));
+        const timeWeight = interactionType === "like" ? 90 : Math.max(10, Math.min(180, readTime || 0));
 
         if (leaning) counts[leaning] += timeWeight;
 

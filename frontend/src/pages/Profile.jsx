@@ -207,6 +207,7 @@ const Profile = () => {
   };
 
   const [interactions, setInteractions] = useState([]);
+  const [isLoadingInteractions, setIsLoadingInteractions] = useState(true);
 
   useEffect(() => {
     const fetchInteractions = async () => {
@@ -228,6 +229,7 @@ const Profile = () => {
         } else {
           console.error("Failed to fetch interactions:", data.error);
         }
+        setIsLoadingInteractions(false); 
       } catch (error) {
         console.error("Error fetching interactions:", error);
       }
@@ -235,6 +237,20 @@ const Profile = () => {
 
     fetchInteractions();
   }, [navigate]);
+
+  useEffect(() => {
+    const hasValidInteraction = interactions.some(
+      (i) =>
+        i.interaction_type === "like" ||
+        (i.interaction_type === "read" && i.read_time_seconds >= READ_TIME_THRESHOLD)
+    );
+  
+    if (!hasValidInteraction && userStatus !== "new") {
+      setUserStatus("new");
+    } else if (hasValidInteraction && userStatus === "new") {
+      setUserStatus("returning");
+    }
+  }, [interactions, userStatus]);
   
   // Delete a interaction from server
   const deleteInteraction = async (id) => {
@@ -309,6 +325,16 @@ const Profile = () => {
     }
   };
 
+  const isReportAvailable = (report) => {
+    return !!report &&
+      typeof report === "object" &&
+      report.engagement_metrics &&
+      report.engagement_metrics.fully_read &&
+      report.engagement_metrics.quick_reads &&
+      report.engagement_metrics.engagement_score &&
+      report.avg_read_time;
+  };
+  
   useEffect(() => {
     const fetchReport = async () => {
       try {
@@ -326,6 +352,30 @@ const Profile = () => {
     };
     fetchReport();
   }, [reportRefreshTrigger]);
+
+  const [hasTwoDays, setHasTwoDays] = useState(false);
+
+  useEffect(() => {
+    if (!interactions || interactions.length === 0) {
+      setHasTwoDays(false);
+      return;
+    }
+  
+    const uniqueDates = [
+      ...new Set(
+        interactions
+          .filter(
+            (i) =>
+              i.interaction_type === "like" ||
+              (i.interaction_type === "read" && i.read_time_seconds >= READ_TIME_THRESHOLD)
+          )
+          .map((i) => i.interaction_timestamp?.split(" ")[0]) // or split("T")[0] if ISO
+          .filter(Boolean)
+      ),
+    ];
+
+    setHasTwoDays(uniqueDates.length >= 2);
+  }, [interactions]);
   
   const getPoliticalIcon = (leaning) => {
     const iconSize = 15;
@@ -340,7 +390,7 @@ const Profile = () => {
         return null;
     }
   };
-  
+    
   return (
     <Flex direction={{ base: "column", md: "row" }} bg={bg}>
       {/* Sidebar */}
@@ -781,10 +831,8 @@ const Profile = () => {
                       >
                         <Heading size="md" mb="4">Recommendations Over Time</Heading>
                         <RecommendationsLineChart interactions={interactions} />
-                        {interactions.filter((i) =>
-                          i.interaction_type === "like" || (i.interaction_type === "read" && i.read_time_seconds >= READ_TIME_THRESHOLD)
-                        ).map(i => i.interaction_timestamp.split("T")[0]).filter((v, i, arr) => arr.indexOf(v) === i).length < 2 && (
-                          <BlurOverlay message="At least two days of data are required to visualize trends." />
+                        {!isLoadingInteractions && (interactions.length === 0 || !hasTwoDays) && (
+                          <BlurOverlay message="At least two different days of data are required to visualize trends." />
                         )}
                       </Box>
                     </motion.div>
@@ -813,7 +861,6 @@ const Profile = () => {
                       >
                         <Heading size="md" mb="4">Interactions Statistics</Heading>
                         <InteractionsStatistics interactions={interactions} />
-
                         {userStatus === "new" && (
                           <BlurOverlay message="Interact with a few articles to unlock this section." />
                         )}
@@ -963,7 +1010,7 @@ const Profile = () => {
                 >
                   <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Bias Insights History</Heading>
                   <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">
-                  {userStatus === "new" ? (
+                  {userStatus === "new" || !isReportAvailable(report) ? (
                     <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "20vh" }}>
                       <LockIcon boxSize="6" color="gray.500" mb="2" />
                       <Text fontSize="lg" color="gray.500" textAlign="center">
