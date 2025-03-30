@@ -16,7 +16,8 @@ SECRET_KEY = "secret_key"
 polusa_balanced = pd.read_csv("backend/data/polusa_balanced.csv", header=0)
 
 # Minimum seconds to consider "interested"
-READ_TIME_THRESHOLD = 120
+READ_TIME_INTERESTED = 120
+READ_TIME_NOT_INTERESTED = 60
 
 def verify_token(func):
     @wraps(func)
@@ -73,9 +74,9 @@ def generate_recommendations():
         for article_id, interaction_type, read_time_seconds in interactions:
             if interaction_type == "like":
                 interaction_type_final = "like"
-            elif interaction_type == "read" and read_time_seconds >= READ_TIME_THRESHOLD:
+            elif interaction_type == "read" and read_time_seconds >= READ_TIME_INTERESTED:
                 interaction_type_final = "read"
-            elif interaction_type == "dislike" or read_time_seconds < READ_TIME_THRESHOLD:
+            elif interaction_type == "dislike" or read_time_seconds < READ_TIME_NOT_INTERESTED:
                 interaction_type_final = "dislike"
             else:
                 continue
