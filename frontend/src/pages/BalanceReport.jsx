@@ -139,6 +139,14 @@ const BalanceReport = () => {
   }, []);
 
   useEffect(() => {
+    if (report && frontRef.current) {
+      requestAnimationFrame(() => {
+        setFrontHeight(frontRef.current.offsetHeight);
+      });
+    }
+  }, [report]);
+
+  useEffect(() => {
     const updateHeight = () => {
       if (frontRef.current) {
         setFrontHeight(frontRef.current.offsetHeight);
@@ -151,10 +159,7 @@ const BalanceReport = () => {
     }
   
     window.addEventListener('resize', updateHeight);
-  
-    // Llamada inicial tras pequeño delay por animaciones
-    setTimeout(updateHeight, 200);
-  
+    
     return () => {
       resizeObserver.disconnect();
       window.removeEventListener('resize', updateHeight);
