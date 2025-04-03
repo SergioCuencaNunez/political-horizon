@@ -433,10 +433,10 @@ const BalanceReport = () => {
                                 The <strong>Engagement Score</strong> measures how deeply you read articles.
                               </Text>
                               <Text fontSize="md" textAlign="center">
-                                A <strong>full read</strong> is counted when you spend <strong>60 seconds or more</strong> on an article.
+                                A <strong>full read</strong> is counted when you spend <strong>90 seconds or more</strong> on an article.
                               </Text>
                               <Text fontSize="md" textAlign="center">
-                                <strong>Quick reads</strong> are under 60 seconds.
+                                <strong>Quick reads</strong> are under 90 seconds.
                               </Text>
                               <Text fontSize="md" textAlign="center">
                                 The score reflects the <strong>percentage of full reads</strong>.

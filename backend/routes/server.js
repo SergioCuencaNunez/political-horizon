@@ -399,6 +399,13 @@ app.get("/articles/random", verifyToken, (req, res) => {
 
 // Get the user's balance report
 app.get("/user/balance-report", verifyToken, (req, res) => {
+
+  const READ_TIME_THRESHOLD = 120;  // Interesting Read
+  const FULL_READ_THRESHOLD = 90;   // Fully Read
+  const MIN_READ_WEIGHT = 10;       // Minimum value for short reads
+  const MAX_READ_WEIGHT = 180;      // Maximum value for long reads
+  const LIKE_WEIGHT = READ_TIME_THRESHOLD; // A like is considered a 2-minute read
+
   const userId = req.user.id;
 
   const interactionsQuery = `
@@ -463,11 +470,13 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
         if (interactionType === "read" && readTime > 0) {
           totalReadTime[leaning] += readTime;
           readCounts[leaning] += 1;
-          if (readTime >= 90) fullyReadCount[leaning]++;
-          else if (readTime < 90) quickReadCount[leaning]++;
+          if (readTime >= FULL_READ_THRESHOLD) fullyReadCount[leaning]++;
+          else if (readTime < FULL_READ_THRESHOLD) quickReadCount[leaning]++;
         }
 
-        const timeWeight = interactionType === "like" ? 90 : Math.max(10, Math.min(180, readTime || 0));
+        const timeWeight = interactionType === "like"
+        ? LIKE_WEIGHT
+        : Math.max(MIN_READ_WEIGHT, Math.min(MAX_READ_WEIGHT, readTime || 0));
 
         if (leaning) counts[leaning] += timeWeight;
 
