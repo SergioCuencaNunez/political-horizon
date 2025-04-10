@@ -532,7 +532,7 @@ const BalanceReport = () => {
                             </BarChart>
                           </ResponsiveContainer>
                           <Text fontSize="md" textAlign="justify">
-                            {`${report.time_read_per_outlet[0].outlet} is the source you spend the most time reading, with a total of ${report.time_read_per_outlet[0].time_read_seconds} seconds.`}
+                            {`${report.time_read_per_outlet[0].outlet} is the source you spend the most time reading, with a total of ${report.time_read_per_outlet[0].time_read_seconds} seconds accumulated from reading interactions.`}
                           </Text>
                         </>
                       ) : (
@@ -594,7 +594,7 @@ const BalanceReport = () => {
                             </RadarChart>
                           </ResponsiveContainer>
                           <Text fontSize="md" textAlign="justify">
-                            {`Based on your interaction frequency, ${report.most_frequented_sources[0].outlet} is the source you visit most often.`}
+                            {`Based on your interaction frequency (likes and reads), ${report.most_frequented_sources[0].outlet} is the source you engaged with most often.`}
                           </Text>
                         </>
                       ) : (

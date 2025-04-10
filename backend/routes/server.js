@@ -574,13 +574,31 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
       };
 
       // **Reading Engagement Insight**
-      let readingBehaviorMessage = "Your reading time appears balanced across political leanings.";
-      if (totalReadTime.LEFT > totalReadTime.CENTER && totalReadTime.LEFT > totalReadTime.RIGHT) {
-        readingBehaviorMessage = "You dedicate significantly more reading time to left-leaning articles. Consider exploring other perspectives for a more balanced view.";
-      } else if (totalReadTime.RIGHT > totalReadTime.CENTER && totalReadTime.RIGHT > totalReadTime.LEFT) {
-        readingBehaviorMessage = "You spend more time on right-leaning articles. Diversifying your reading across the spectrum could enhance your understanding.";
-      } else if (totalReadTime.CENTER > totalReadTime.LEFT && totalReadTime.CENTER > totalReadTime.RIGHT) {
-        readingBehaviorMessage = "You invest most of your reading time in center-leaning articles. Exploring left and right perspectives may offer additional context.";
+      const totalSeconds = totalReadTime.LEFT + totalReadTime.CENTER + totalReadTime.RIGHT;
+      if (totalSeconds === 0) {
+        readingBehaviorMessage = "No reading data available.";
+      } else {
+        const pct = {
+          LEFT: (totalReadTime.LEFT / totalSeconds) * 100,
+          CENTER: (totalReadTime.CENTER / totalSeconds) * 100,
+          RIGHT: (totalReadTime.RIGHT / totalSeconds) * 100
+        };
+
+        const sorted = Object.entries(pct).sort((a, b) => b[1] - a[1]);
+        const [top, second] = sorted;
+        const diff = top[1] - second[1];
+
+        if (diff >= 10) {
+          if (top[0] === "LEFT") {
+            readingBehaviorMessage = "You dedicate significantly more reading time to left-leaning articles. Consider exploring other perspectives for a more balanced view.";
+          } else if (top[0] === "RIGHT") {
+            readingBehaviorMessage = "You spend more time on right-leaning articles. Diversifying your reading across the spectrum could enhance your understanding.";
+          } else {
+            readingBehaviorMessage = "You invest most of your reading time in center-leaning articles. Exploring left and right perspectives may offer additional context.";
+          }
+        } else {
+          readingBehaviorMessage = "Your reading time appears balanced across political leanings.";
+        }
       }
       
       // **Balance Message**
