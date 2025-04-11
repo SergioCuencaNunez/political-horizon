@@ -495,7 +495,7 @@ const BalanceReport = () => {
                               />
                               <YAxis stroke={axisColor} />
                               <Tooltip
-                                formatter={(value) => `${value} sec`}
+                                formatter={(value) => [`${value} sec`, "Total Reading Time"]}
                                 labelFormatter={(label) => `Outlet: ${label}`}
                                 cursor={{
                                   fill: fillColor,
@@ -561,6 +561,7 @@ const BalanceReport = () => {
                               <PolarAngleAxis dataKey="outlet" stroke={axisColor} tick={xAxisTickProps} />
                               <PolarRadiusAxis stroke={axisColor} tick={{ fontSize: 12 }} />
                               <Tooltip
+                                formatter={(value) => [`${value}`, "Engagement Score (likes + weighted reads)"]}
                                 cursor={{
                                   fill: fillColor,
                                   fillOpacity: 0.2,
