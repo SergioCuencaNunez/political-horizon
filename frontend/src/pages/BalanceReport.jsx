@@ -42,8 +42,6 @@ import GaugeComponent from "react-gauge-component";
 import { GiCapitol, GiBigWave, GiScales } from "react-icons/gi";
 import { motion, AnimatePresence } from "framer-motion";
 
-import BlurOverlay from "../components/BlurOverlay";
-
 import logoBalanceBright from "../assets/logo-balance-bright.png";
 import logoBalanceDark from "../assets/logo-balance-dark.png";
 
