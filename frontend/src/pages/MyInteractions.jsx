@@ -350,7 +350,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                           whileTap={{ scale: 0.9 }}
                         >
                           <Button
-                            colorScheme="red"
+                            colorScheme="blue"
                             onClick={() => {
                               setInteractionToDelete(null);
                               onOpen();
@@ -531,7 +531,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                         whileTap={{ scale: 0.9 }}
                       >
                         <Button
-                          colorScheme="red"
+                          colorScheme="blue"
                           onClick={() => {
                             setInteractionToDelete(null);
                             onOpen();

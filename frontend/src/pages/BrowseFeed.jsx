@@ -201,6 +201,7 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
       });
       const data = await response.json();
       setArticles(data);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       setErrorMessage(`Error fetching random articles: ${error}`);
     } finally {
@@ -310,6 +311,7 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
         if (result.success && result.recommendations.length > 0) {
           setArticles(result.recommendations);
           setReportRefreshTrigger(prev => prev + 1);
+          window.scrollTo({ top: 0, behavior: "smooth" });
           
           const statusResponse = await fetch(`${BACKEND_URL_DB}/user/status`, {
             headers: { Authorization: `Bearer ${token}` },

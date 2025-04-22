@@ -18,24 +18,34 @@ const otherColorDark = '#90cdf4';
 
 const READ_TIME_THRESHOLD = 60;
 
-const InteractionsStatistics = ({ interactions }) => {
+const DailyInteractionBreakdown = ({ interactions }) => {
   const primaryColor = useColorModeValue(primaryColorLight, primaryColorDark);
   const otherColor = useColorModeValue(otherColorLight, otherColorDark);
 
   const axisColor = useColorModeValue("#4A4A4A", "#E0E0E0");
   const gridColor = useColorModeValue("#B0B0B0", "#888888");
 
-  const chartData = interactions.reduce((acc, item) => {
-    const date = new Date(item.interaction_timestamp);
-    const formattedDate = date.toLocaleDateString("en-GB"); // DD/MM/YYYY
+  const chartDataMap = new Map();
 
-    if (!acc[formattedDate]) {
-      acc[formattedDate] = {
-        date: formattedDate,
+  interactions.forEach((item) => {
+    const dateObj = new Date(item.interaction_timestamp);
+    const dateKey =
+      dateObj.getFullYear() +
+      "-" +
+      String(dateObj.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(dateObj.getDate()).padStart(2, "0");
+
+    if (!chartDataMap.has(dateKey)) {
+      chartDataMap.set(dateKey, {
+        rawDate: dateKey,
+        formattedDate: dateObj.toLocaleDateString("es-ES"),
         suggested: 0,
         notRelevant: 0,
-      };
+      });
     }
+
+    const entry = chartDataMap.get(dateKey);
 
     const isSuggested =
       item.interaction_type === "like" ||
@@ -46,32 +56,41 @@ const InteractionsStatistics = ({ interactions }) => {
       (item.interaction_type === "read" && item.read_time_seconds < READ_TIME_THRESHOLD);
 
     if (isSuggested) {
-      acc[formattedDate].suggested += item.recommendations?.length || 0;
+      entry.suggested += item.recommendations?.length || 0;
     }
 
     if (isNotRelevant) {
-      acc[formattedDate].notRelevant += item.recommendations?.length || 0;
+      entry.notRelevant += item.recommendations?.length || 0;
     }
-
-    return acc;
-  }, {});
-
-  const sortedData = Object.values(chartData).sort((a, b) => {
-    const [d1, m1, y1] = a.date.split("/").map(Number);
-    const [d2, m2, y2] = b.date.split("/").map(Number);
-    return new Date(y1, m1 - 1, d1) - new Date(y2, m2 - 1, d2);
   });
 
-  const maxBarSize = 70;
-  const dynamicBarSize = Math.min(maxBarSize, 1000 / sortedData.length);
+  const chartData = Array.from(chartDataMap.values())
+    .sort((a, b) => new Date(a.rawDate) - new Date(b.rawDate))
+    .map(({ formattedDate, suggested, notRelevant }) => {
+      const total = suggested + notRelevant;
+      return {
+        date: formattedDate,
+        suggested: total > 0 ? (suggested / total) * 100 : 0,
+        notRelevant: total > 0 ? (notRelevant / total) * 100 : 0,
+      };
+    });
+
+  const maxBarSize = 55;
+  const dynamicBarSize = Math.min(maxBarSize, 1000 / chartData.length);
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={sortedData}>
+      <BarChart data={chartData}>
         <CartesianGrid stroke={gridColor} strokeDasharray="3 3" />
-        <XAxis dataKey="date" stroke={axisColor} />
-        <YAxis stroke={axisColor} />
+        <XAxis dataKey="date" stroke={axisColor} tickFormatter={(date) => date} />
+        <YAxis
+          stroke={axisColor}
+          domain={[0, 100]}
+          tickFormatter={(value) => `${value}%`}
+          allowDecimals={false}
+        />
         <Tooltip
+          formatter={(value) => `${Math.round(value)}%`}
           cursor={{
             fill: useColorModeValue("#A0AEC0", "#CBD5E0"),
             fillOpacity: 0.2,
@@ -94,11 +113,11 @@ const InteractionsStatistics = ({ interactions }) => {
           }}
         />
         <Legend />
-        <Bar dataKey="suggested" fill={primaryColor} name="Suggested Articles" barSize={dynamicBarSize} />
-        <Bar dataKey="notRelevant" fill={otherColor} name="Not Relevant" barSize={dynamicBarSize} />
+        <Bar dataKey="suggested" fill={primaryColor} stackId="a" name="Suggested Articles" barSize={dynamicBarSize} />
+        <Bar dataKey="notRelevant" fill={otherColor} stackId="a" name="Not Relevant" barSize={dynamicBarSize} />
       </BarChart>
     </ResponsiveContainer>
   );
 };
 
-export default InteractionsStatistics;
+export default DailyInteractionBreakdown;

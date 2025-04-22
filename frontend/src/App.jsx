@@ -25,6 +25,7 @@ import NotFound from './pages/NotFound';
 import Navbar from './components/Navbar'; 
 import Home from './components/Home';
 import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop';
 
 const AuthLayout = ({ children, title, subtitle }) => {
   const location = useLocation();
@@ -164,6 +165,7 @@ function App() {
   return (
     <ChakraProvider theme={theme}>
       <Router>
+        <ScrollToTop />
         <Routes>
           {/* Auth Routes (SignUp and Login with AuthLayout) */}
           <Route
