@@ -309,15 +309,23 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
         const result = await response.json();
   
         if (result.success && result.recommendations.length > 0) {
-          setArticles(result.recommendations);
-          setReportRefreshTrigger(prev => prev + 1);
           window.scrollTo({ top: 0, behavior: "smooth" });
+          setTimeout(() => {
+            (async () => {
+              setArticles(result.recommendations);
+              setReportRefreshTrigger(prev => prev + 1);
           
-          const statusResponse = await fetch(`${BACKEND_URL_DB}/user/status`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const statusData = await statusResponse.json();
-          setUserStatus(statusData.status);
+              try {
+                const statusResponse = await fetch(`${BACKEND_URL_DB}/user/status`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                const statusData = await statusResponse.json();
+                setUserStatus(statusData.status);
+              } catch (error) {
+                console.error("Failed to fetch status after recommendations:", error);
+              }
+            })();
+          }, 300);
         } else {
           setErrorMessage("No recommendations generated. Try interacting with more articles.");
           onErrorOpen();

@@ -535,7 +535,7 @@ const BalanceReport = () => {
                         </>
                       ) : (
                         <>
-                          <Flex align="center" justify="center" direction="column" height={200}>
+                          <Flex align="center" justify="center" direction="column" height={350}>
                             <LockIcon boxSize="6" color="gray.500" mb="2" />
                             <Text fontSize="md" color="gray.500" textAlign="center">
                               In order to provide a more detailed analysis of your source diversity, please read some articles.
@@ -598,7 +598,7 @@ const BalanceReport = () => {
                         </>
                       ) : (
                         <>
-                          <Flex align="center" justify="center" direction="column" height={200}>
+                          <Flex align="center" justify="center" direction="column" height={350}>
                             <LockIcon boxSize="6" color="gray.500" mb="2" />
                             <Text fontSize="md" color="gray.500" textAlign="center">
                               In order to provide a more detailed analysis of your source diversity, please interact with more articles.

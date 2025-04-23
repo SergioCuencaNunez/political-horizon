@@ -4,7 +4,8 @@ import pandas as pd
 import sqlite3
 import jwt
 from functools import wraps
-from datetime import datetime, timezone, timedelta
+import pytz
+from datetime import datetime, timezone
 from backend.models.recommendation_function import recommend_articles_bias_controlled
 
 app = Flask(__name__)
@@ -125,8 +126,9 @@ def generate_recommendations():
             ))
 
         # Update last recommendation request time
-        cursor.execute("UPDATE users SET last_recommendation_timestamp = ? WHERE id = ?", 
-                       (datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'), user_id))
+        local_time = datetime.now(pytz.timezone('Europe/Madrid')).strftime('%Y-%m-%d %H:%M:%S')
+        cursor.execute("UPDATE users SET last_recommendation_timestamp = ? WHERE id = ?",(local_time, user_id))
+
         conn.commit()
 
         return jsonify({

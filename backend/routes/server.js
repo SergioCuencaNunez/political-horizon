@@ -274,12 +274,15 @@ app.post("/user/interactions", verifyToken, (req, res) => {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
+  const { DateTime } = require("luxon");
+  const localTime = DateTime.now().setZone("Europe/Madrid").toFormat("yyyy-MM-dd HH:mm:ss");
+
   const query = `
-    INSERT INTO user_interactions (id, user_id, interaction_type, read_time_seconds) 
-    VALUES (?, ?, ?, ?)
+    INSERT INTO user_interactions (id, user_id, interaction_type, read_time_seconds, interaction_timestamp) 
+    VALUES (?, ?, ?, ?, ?)
   `;
 
-  db.run(query, [id, req.user.id, interaction_type, read_time_seconds || 0], function (err) {
+  db.run(query, [id, req.user.id, interaction_type, read_time_seconds || 0, localTime], function (err) {
     if (err) return res.status(500).json({ error: "Failed to store interaction" });
     res.json({ success: true, message: "Interaction stored", interaction_id: this.lastID });
   });

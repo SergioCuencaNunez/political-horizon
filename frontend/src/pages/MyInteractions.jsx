@@ -18,6 +18,8 @@ import {
   useColorMode,
   useColorModeValue,
   useBreakpointValue,
+  Input,
+  Select,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -60,6 +62,15 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
   const [errorMessage, setErrorMessage] = useState("");
   const { isOpen: isErrorOpen, onOpen: onErrorOpen, onClose: onErrorClose } = useDisclosure();
 
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [searchQuerySuggested, setSearchQuerySuggested] = useState("");
+  const [searchNewsIdSuggested, setSearchNewsIdSuggested] = useState("");
+  const [searchUserIdSuggested, setSearchUserIdSuggested] = useState("");
+
+  const [searchQueryNotRelevant, setSearchQueryNotRelevant] = useState("");
+  const [searchNewsIdNotRelevant, setSearchNewsIdNotRelevant] = useState("");
+  const [searchUserIdNotRelevant, setSearchUserIdNotRelevant] = useState("");
+
   const READ_TIME_THRESHOLD = 120;
 
   const suggestedText = useBreakpointValue({
@@ -71,6 +82,18 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
     base: "These are articles you disliked or didn’t engage with. We use this to avoid showing you similar content in future suggestions.",
     lg: "These are the news articles you have shown little interest in, either by disliking them or not spending enough time reading. This feedback helps us fine-tune your interests and avoid suggesting similar content in future recommendations.",
   });
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const decoded = JSON.parse(atob(token.split('.')[1]));
+        if (decoded?.role === "admin") setIsAdmin(true);
+      } catch (e) {
+        console.error("Failed to decode token", e);
+      }
+    }
+  }, []);
 
   useEffect(() => {
       if (!hasFetched.current) {
@@ -147,7 +170,31 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
   const toggleSortOrder = () => {
     setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
   };
+  
+  const uniqueUserIds = Array.from(new Set(interactions.map(i => i.user_id).filter(id => id !== undefined)));
 
+  const filteredSuggested = sortedInteractions.filter(
+    (interaction) =>
+      (interaction.interaction_type === "like" ||
+        (interaction.interaction_type === "read" &&
+          interaction.read_time_seconds >= READ_TIME_THRESHOLD)) &&
+      (interaction.headline?.toLowerCase().includes(searchQuerySuggested.toLowerCase()) ||
+       interaction.outlet?.toLowerCase().includes(searchQuerySuggested.toLowerCase())) &&
+      (searchNewsIdSuggested === "" || interaction.id.toString().includes(searchNewsIdSuggested)) &&
+      (searchUserIdSuggested === "" || interaction.user_id === parseInt(searchUserIdSuggested))
+  );
+
+  const filteredNotRelevant = sortedInteractions.filter(
+    (interaction) =>
+      (interaction.interaction_type === "dislike" ||
+        (interaction.interaction_type === "read" &&
+          interaction.read_time_seconds < READ_TIME_THRESHOLD)) &&
+      (interaction.headline?.toLowerCase().includes(searchQueryNotRelevant.toLowerCase()) ||
+       interaction.outlet?.toLowerCase().includes(searchQueryNotRelevant.toLowerCase())) &&
+       (searchNewsIdNotRelevant === "" || interaction.id.toString().includes(searchNewsIdNotRelevant)) &&
+       (searchUserIdNotRelevant === "" || interaction.user_id === parseInt(searchUserIdNotRelevant))
+  );
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
@@ -158,7 +205,9 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
       <Box px={{ md: 4 }} py={{ md: 6 }}>
         <Flex direction="column" bg={cardBg} p={8} borderRadius="md" shadow="md">
           <Flex justify="space-between" align="center" mb="4">
-            <Heading fontSize={{ base: '3xl', md: '4xl' }}>My Interactions</Heading>
+            <Heading fontSize={{ base: '3xl', md: '4xl' }}>
+              {isAdmin ? "All Interactions" : "My Interactions"}
+            </Heading>
             <HStack spacing="4" display={{ base: "none", md: "none", lg: "flex" }}>
               <motion.img
                   src={logo}
@@ -214,10 +263,48 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
               <Text mb="4" textAlign="justify">{suggestedText}</Text>
             }
           </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.5 }}
+          >
+            <Flex gap="4" mb="6">
+              {isAdmin && (
+                  <Input
+                    placeholder="Filter by News ID"
+                    value={searchNewsIdSuggested}
+                    onChange={(e) => setSearchNewsIdSuggested(e.target.value)}
+                    flex="1"
+                  />
+              )}
+              <Input
+                placeholder="Search by headline or outlet..."
+                value={searchQuerySuggested}
+                onChange={(e) => setSearchQuerySuggested(e.target.value)}
+                flex="3"
+              />
+              {isAdmin && (
+                  <Select
+                    placeholder="Filter by User ID"
+                    value={searchUserIdSuggested}
+                    onChange={(e) => setSearchUserIdSuggested(e.target.value)}
+                    flex="1"
+                  >
+                  {uniqueUserIds.map((uid) => (
+                    <option key={uid} value={uid}>
+                      {uid}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Flex>
+          </motion.div>
+               
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
           >
               {interactions.some((i) => i.interaction_type === "like" || (i.interaction_type === "read" && i.read_time_seconds >= READ_TIME_THRESHOLD)) ? (
                 <>
@@ -225,30 +312,47 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                     <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
                       <Thead>
                         <Tr>
-                          <Th width="10%" textAlign="center">
-                            <Flex align="center" justify="center">
-                              <b>Date</b>
-                              <IconButton
-                                aria-label="Toggle Sort Order"
-                                icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
-                                size="xs"
-                                variant="ghost"
-                                onClick={toggleSortOrder}
-                                ml="1"
-                              />
-                            </Flex>
-                          </Th>
-                          <Th width="40%" textAlign="center">Interacted Article</Th>
-                          <Th width="40%" textAlign="center">Suggested News</Th>
+                          {isAdmin && <Th width="10%" textAlign="center"><b>News ID</b></Th>}
+                          {!isAdmin && (
+                            <Th width="10%" textAlign="center">
+                              <Flex align="center" justify="center">
+                                <b>Date</b>
+                                <IconButton
+                                  aria-label="Toggle Sort Order"
+                                  icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
+                                  size="xs"
+                                  variant="ghost"
+                                  onClick={toggleSortOrder}
+                                  ml="1"
+                                />
+                              </Flex>
+                            </Th>
+                          )}
+                          <Th width="30%" textAlign="center">Interacted Article</Th>
+                          <Th width="30%" textAlign="center">Suggested News</Th>
+                          {isAdmin && <Th width="10%" textAlign="center"><b>User ID</b></Th>}
+                          {isAdmin && (
+                            <Th width="10%" textAlign="center">
+                              <Flex align="center" justify="center">
+                                <b>Date</b>
+                                <IconButton
+                                  aria-label="Toggle Sort Order"
+                                  icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
+                                  size="xs"
+                                  variant="ghost"
+                                  onClick={toggleSortOrder}
+                                  ml="1"
+                                />
+                              </Flex>
+                            </Th>
+                          )}
                           <Th width="5%" textAlign="center">Remove</Th>
                           <Th width="5%" textAlign="center">Select</Th>
                         </Tr>
                       </Thead>
                       <Tbody as={motion.tbody}>
                         <AnimatePresence>
-                          {sortedInteractions
-                            .filter((interaction) => interaction.interaction_type === "like" || (interaction.interaction_type === "read" && interaction.read_time_seconds >= READ_TIME_THRESHOLD))
-                            .map((interaction) => (
+                          {filteredSuggested.map((interaction) => (
                               <motion.tr
                                 key={interaction.id}
                                 layout
@@ -257,7 +361,8 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                                 exit={{ opacity: 0, y: -50 }}
                                 transition={{ duration: 0.5 }}
                               >
-                                <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>
+                                {isAdmin && <Td textAlign="center">#{interaction.id}</Td>}
+                                {!isAdmin && <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>}
                                 {/* Interacted Article */}
                                 <Td textAlign="justify">
                                   <Box mb={2}>
@@ -308,6 +413,8 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                                     <Text color="gray.400">No suggested news</Text>
                                   )}
                                 </Td>
+                                {isAdmin && <Td textAlign="center">{interaction.user_id}</Td>}
+                                {isAdmin && <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>}
                                 <Td textAlign="center">
                                   <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                                     <IconButton
@@ -376,9 +483,11 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                     <Text fontSize="lg" color="gray.500" textAlign="center">
                       No suggested news found.
                     </Text>
-                    <Text fontSize="md" color="gray.400" textAlign="center">
-                      Engage with articles by liking them or spending more time reading. Horizon Explore will then provide personalized recommendations, while maintaining a balanced and diverse perspective.
-                    </Text>
+                    {!isAdmin && (
+                      <Text fontSize="md" color="gray.400" textAlign="center">
+                        Engage with articles by liking them or spending more time reading. Horizon Explore will then provide personalized recommendations, while maintaining a balanced and diverse perspective.
+                      </Text>
+                    )}
                   </Flex>
                 </motion.div>
               )}
@@ -388,17 +497,55 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.5 }}
+            transition={{ delay: 0.8, duration: 0.5 }}
           >
             <Heading fontSize="2xl" mt="4" mb="2">Not Relevant News</Heading>
             {userStatus === "returning" && 
               <Text mb="4" textAlign="justify">{notRelevantText}</Text>
             }
           </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8, duration: 0.5 }}
+            transition={{ delay: 1.0, duration: 0.5 }}
+          >
+            <Flex gap="4" mb="6">
+              {isAdmin && (
+                  <Input
+                    placeholder="Filter by News ID"
+                    value={searchNewsIdNotRelevant}
+                    onChange={(e) => setSearchNewsIdNotRelevant(e.target.value)}
+                    flex="1"
+                  />
+              )}
+              <Input
+                placeholder="Search by headline or outlet..."
+                value={searchQueryNotRelevant}
+                onChange={(e) => setSearchQueryNotRelevant(e.target.value)}
+                flex="3"
+              />
+              {isAdmin && (
+                  <Select
+                    placeholder="Filter by User ID"
+                    value={searchUserIdNotRelevant}
+                    onChange={(e) => setSearchUserIdNotRelevant(e.target.value)}
+                    flex="1"
+                  >
+                  {uniqueUserIds.map((uid) => (
+                    <option key={uid} value={uid}>
+                      {uid}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Flex>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.2, duration: 0.5 }}
           >
             {interactions.some((i) => i.interaction_type === "dislike" || (i.interaction_type === "read" && i.read_time_seconds < READ_TIME_THRESHOLD)) ? (
               <>
@@ -406,30 +553,47 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                   <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
                     <Thead>
                       <Tr>
-                        <Th width="10%" textAlign="center">
-                          <Flex align="center" justify="center">
-                            <b>Date</b>
-                            <IconButton
-                              aria-label="Toggle Sort Order"
-                              icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
-                              size="xs"
-                              variant="ghost"
-                              onClick={toggleSortOrder}
-                              ml="1"
-                            />
-                          </Flex>
-                        </Th>
-                        <Th width="40%" textAlign="center">Interacted Article</Th>
-                        <Th width="40%" textAlign="center">Not Relevant News</Th>
+                        {isAdmin && <Th width="10%" textAlign="center"><b>News ID</b></Th>}
+                        {!isAdmin && (
+                          <Th width="10%" textAlign="center">
+                            <Flex align="center" justify="center">
+                              <b>Date</b>
+                              <IconButton
+                                aria-label="Toggle Sort Order"
+                                icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
+                                size="xs"
+                                variant="ghost"
+                                onClick={toggleSortOrder}
+                                ml="1"
+                              />
+                            </Flex>
+                          </Th>
+                        )}
+                        <Th width="30%" textAlign="center">Interacted Article</Th>
+                        <Th width="30%" textAlign="center">Not Relevant News</Th>
+                        {isAdmin && <Th width="10%" textAlign="center"><b>User ID</b></Th>}
+                        {isAdmin && (
+                          <Th width="10%" textAlign="center">
+                            <Flex align="center" justify="center">
+                              <b>Date</b>
+                              <IconButton
+                                aria-label="Toggle Sort Order"
+                                icon={sortOrder === "desc" ? <ChevronDownIcon /> : <ChevronUpIcon />}
+                                size="xs"
+                                variant="ghost"
+                                onClick={toggleSortOrder}
+                                ml="1"
+                              />
+                            </Flex>
+                          </Th>
+                        )}
                         <Th width="5%" textAlign="center">Remove</Th>
                         <Th width="5%" textAlign="center">Select</Th>
                       </Tr>
                     </Thead>
                     <Tbody as={motion.tbody}>
                       <AnimatePresence>
-                        {sortedInteractions
-                          .filter((interaction) => interaction.interaction_type === "dislike" || (interaction.interaction_type === "read" && interaction.read_time_seconds < READ_TIME_THRESHOLD))
-                          .map((interaction) => (
+                        {filteredNotRelevant.map((interaction) => (
                             <motion.tr
                               key={interaction.id}
                               layout
@@ -438,7 +602,8 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                               exit={{ opacity: 0, y: -50 }}
                               transition={{ duration: 0.5 }}
                             >
-                              <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>
+                              {isAdmin && <Td textAlign="center">#{interaction.id}</Td>}
+                              {!isAdmin && <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>}
                               {/* Interacted Article */}
                               <Td textAlign="justify">
                                 <Box mb={2}>
@@ -489,6 +654,8 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                                   <Text color="gray.400">No not relevant news</Text>
                                 )}
                               </Td>
+                              {isAdmin && <Td textAlign="center">{interaction.user_id}</Td>}
+                              {isAdmin && <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>}
                               <Td textAlign="center">
                                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                                   <IconButton
@@ -557,9 +724,11 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                   <Text fontSize="lg" color="gray.500" textAlign="center">
                     No less relevant news found.
                   </Text>
-                  <Text fontSize="md" color="gray.400" textAlign="center">
-                    If you find certain articles not relevant or unhelpful, let us know by disliking them. Horizon Explore will use this feedback to improve your experience and avoid suggesting similar content.
-                  </Text>
+                  {!isAdmin && (
+                    <Text fontSize="md" color="gray.400" textAlign="center">
+                      If you find certain articles not relevant or unhelpful, let us know by disliking them. Horizon Explore will use this feedback to improve your experience and avoid suggesting similar content.
+                    </Text>
+                  )}
                 </Flex>
               </motion.div>
             )}

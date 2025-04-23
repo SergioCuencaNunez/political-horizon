@@ -625,7 +625,7 @@ useEffect(() => {
                         _active={{ color: activeColor }}
                         color={textColor}
                         width="100%"
-                        onClick={() => navigate("/profile/my-interactions")}
+                        onClick={() => navigate("/admin/profile/my-interactions")}
                       >
                         <HStack>
                           <FaTasks />
@@ -928,7 +928,7 @@ useEffect(() => {
                             bg: useColorModeValue("gray.50", "gray.600"),
                           }}               
                         >
-                          <Heading size="md" mb="4">Interactions Statistics</Heading>
+                          <Heading size="md" mb="4">Daily Interaction Breakdown</Heading>
                           <DailyInteractionBreakdown interactions={interactions} />
                           {userStatus === "new" && (
                             <BlurOverlay message="Interact with a few articles to unlock this section." />
