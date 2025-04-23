@@ -17,10 +17,13 @@ import About from './pages/About';
 import SignUp from './pages/SignUp';
 import Login from './pages/Login';
 import Profile from "./pages/Profile";
+import AdminProfile from "./pages/AdminProfile";
+
 //import Detect from './pages/Detect';
 //import Verify from './pages/Verify';
 
 import NotFound from './pages/NotFound';
+import AccessDenied from './pages/AccessDenied';
 
 import Navbar from './components/Navbar'; 
 import Home from './components/Home';
@@ -160,6 +163,26 @@ const NotFoundLayout = ({ children }) => (
   </Flex>
 );
 
+// Access Denied Layout (with Navbar and Footer)
+const AccessDeniedLayout = ({ children }) => (
+  <Flex direction="column" minH="100vh">
+    <Navbar />
+    <Box
+      flex="1"
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      py={{ base: '6', md: '12' }}
+      px={{ base: '6', md: '12' }}
+      mx="auto"
+      w="100%"
+    >
+      {children}
+    </Box>
+    <Footer />
+  </Flex>
+);
+
 // App Component
 function App() {
   return (
@@ -199,13 +222,20 @@ function App() {
             path="/about"
             element={<DefaultLayout><About /></DefaultLayout>}
           />
+          {/* Profile Route */}
+          <Route path="/profile/*" element={<Profile />} />
+          {/* Admin Profile Route */}
+          <Route path="/admin/profile/*" element={<AdminProfile />} />
           {/* Not Found */}
           <Route
             path="*"
             element={<NotFoundLayout><NotFound /></NotFoundLayout>}
           />
-          {/* Profile Route */}
-          <Route path="/profile/*" element={<Profile />} />
+          {/* Access Denied */}
+          <Route
+            path="/access-denied"
+            element={<AccessDeniedLayout><AccessDenied /></AccessDeniedLayout>}
+          />
         </Routes>
       </Router>
     </ChakraProvider>

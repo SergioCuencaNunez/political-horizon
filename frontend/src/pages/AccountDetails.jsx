@@ -49,6 +49,7 @@ const AccountDetails = () => {
   const activeColor = useColorModeValue(primaryActiveLight, primaryActiveDark);
 
   const { colorMode, toggleColorMode } = useColorMode();
+  const [isAdmin, setIsAdmin] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [politicalLeaning, setPoliticalLeaning] = useState("");
@@ -80,35 +81,58 @@ const AccountDetails = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${BACKEND_URL}/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (response.ok) {
+      const decoded = JSON.parse(atob(token.split('.')[1]));
+      const admin = decoded.role === "admin";
+      setIsAdmin(admin);
+      const endpoint = admin ? "/admin/profile" : "/profile";
+
+      try {
+        const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+  
+        const data = await response.json();
+        if (response.ok) {
         setName(data.username);
         setEmail(data.email);
         setPoliticalLeaning(data.political_leaning);
         setOriginalName(data.username);
         setOriginalEmail(data.email);
         setOriginalPoliticalLeaning(data.political_leaning);
+        } else {
+          setAlert({ type: "error", message: data.error || "Access denied" });
+        }
+      } catch (err) {
+        setAlert({ type: "error", message: "Failed to fetch profile data" });
       }
     };
-
     fetchProfile();
   }, []);
 
   const checkIfProfileChanged = async () => {
     const token = localStorage.getItem("token");
-    const response = await fetch(`${BACKEND_URL}/profile`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await response.json();
-    if (response.ok) {
-      setOriginalName(data.username);
-      setOriginalEmail(data.email);
-      setOriginalPoliticalLeaning(data.political_leaning);
-      return data.username === name && data.email === email && data.political_leaning === politicalLeaning;
+    if (!token) return false;
+  
+    const decoded = JSON.parse(atob(token.split('.')[1]));
+    const isAdmin = decoded.role === "admin";
+    const endpoint = isAdmin ? "/admin/profile" : "/profile";
+  
+    try {
+      const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      const data = await response.json();
+      if (response.ok){
+        setOriginalName(data.username);
+        setOriginalEmail(data.email);
+        setOriginalPoliticalLeaning(data.political_leaning);
+        return data.username === name && data.email === email && data.political_leaning === politicalLeaning;
+      }
+    } catch (error) {
+      console.error("Error checking profile:", error);
     }
+  
     return false;
   };
 
@@ -479,6 +503,7 @@ const AccountDetails = () => {
 
                 {/* Delete Account - Below on mobile, in row on larger screens */}
                 <Flex>
+                {!isAdmin && (
                   <Button
                     as={motion.button}
                     whileHover={{ scale: 1.1 }}
@@ -491,6 +516,7 @@ const AccountDetails = () => {
                   >
                     Delete Account
                   </Button>
+                )}
                 </Flex>
               </Flex>
             </Box>

@@ -125,7 +125,12 @@ const Login = () => {
         setTimeout(() => {
           resetAlerts();
           localStorage.setItem("token", data.token);
-          navigate("/profile");
+          const decoded = JSON.parse(atob(data.token.split('.')[1]));
+          if (decoded.role === 'admin') {
+            navigate("/admin/profile");
+          } else {
+            navigate("/profile");
+          }
         }, 3000);
       } else {
         if (data.error === "User not found") {

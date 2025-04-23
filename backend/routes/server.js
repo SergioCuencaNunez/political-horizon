@@ -177,13 +177,13 @@ app.delete("/delete-account", verifyToken, (req, res) => {
       return res.status(404).json({ error: "Account not found." });
     }
 
-    const deleteClaims = "DELETE FROM claims WHERE user_id = ?";
-    const deleteDetections = "DELETE FROM detections WHERE user_id = ?";
-    db.run(deleteClaims, [userId], (err) => {
-      if (err) console.error("Failed to delete claims:", err.message);
+    const deleteInteractions = "DELETE FROM user_interactions WHERE user_id = ?";
+    const deleteRecommendations = "DELETE FROM user_recommendations WHERE user_id = ?";
+    db.run(deleteInteractions, [userId], (err) => {
+      if (err) console.error("Failed to delete interactions:", err.message);
     });
-    db.run(deleteDetections, [userId], (err) => {
-      if (err) console.error("Failed to delete detections:", err.message);
+    db.run(deleteRecommendations, [userId], (err) => {
+      if (err) console.error("Failed to delete recommendations:", err.message);
     });
 
     res.status(200).json({ message: "Account deleted successfully." });
@@ -192,12 +192,60 @@ app.delete("/delete-account", verifyToken, (req, res) => {
 
 // Protected Route
 app.get("/profile", verifyToken, (req, res) => {
+  if (req.user.role === "admin") {
+    return res.status(403).json({ error: "Admins are not allowed to access the user profile route. Please log in as a regular user." });
+  }
+
   const query = "SELECT username, email, political_leaning FROM users WHERE id = ?";
   db.get(query, [req.user.id], (err, user) => {
     if (err) return res.status(500).json({ error: "Database error" });
     if (!user) return res.status(404).json({ error: "User not found" });
 
     res.json({ username: user.username, email: user.email, political_leaning: user.political_leaning });
+  });
+});
+
+// Get all users
+app.get("/users", verifyToken, (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ error: "Access denied. Only admins can view users." });
+  }
+
+  const query = `SELECT * FROM users WHERE role = 'user' ORDER BY last_recommendation_timestamp DESC`;
+  db.all(query, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: "Failed to fetch users." });
+    res.json(rows);
+  });
+});
+
+app.delete("/users/:id", verifyToken, (req, res) => {
+  const userId = req.params.id;
+
+  // Check if the requester is an admin
+  if (!req.user || req.user.role !== "admin"){
+    return res.status(403).json({ error: "Unauthorized access." });
+  }
+
+  const query = "DELETE FROM users WHERE id = ?";
+  db.run(query, [userId], function (err) {
+    if (err) {
+      console.error("Error deleting user:", err.message);
+      return res.status(500).json({ error: "Failed to delete user." });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    const deleteInteractions = "DELETE FROM user_interactions WHERE user_id = ?";
+    const deleteRecommendations = "DELETE FROM user_recommendations WHERE user_id = ?";
+    db.run(deleteInteractions, [userId], (err) => {
+      if (err) console.error("Failed to delete interactions:", err.message);
+    });
+    db.run(deleteRecommendations, [userId], (err) => {
+      if (err) console.error("Failed to delete recommendations:", err.message);
+    });
+
+    res.status(200).json({ message: "User deleted successfully." });
   });
 });
 
@@ -239,13 +287,14 @@ app.post("/user/interactions", verifyToken, (req, res) => {
 
 // Fetch user interactions along with recommendations and interacted news details
 app.get("/user/interactions", verifyToken, (req, res) => {
-  const interactionsQuery = `
-    SELECT * FROM user_interactions 
-    WHERE user_id = ? 
-    ORDER BY interaction_timestamp DESC;
-  `;
+  const isAdmin = req.user.role === "admin";
+  const interactionsQuery = isAdmin
+    ? `SELECT * FROM user_interactions ORDER BY interaction_timestamp DESC`
+    : `SELECT * FROM user_interactions WHERE user_id = ? ORDER BY interaction_timestamp DESC`;
+  
+  const params = isAdmin ? [] : [req.user.id];
 
-  db.all(interactionsQuery, [req.user.id], (err, interactions) => {
+  db.all(interactionsQuery, params, (err, interactions) => {
     if (err) return res.status(500).json({ error: "Failed to fetch interactions" });
 
     if (interactions.length === 0) return res.json([]);
@@ -267,13 +316,20 @@ app.get("/user/interactions", verifyToken, (req, res) => {
         newsMap[news.id] = { headline: news.headline, outlet: news.outlet, url: news.url };
       });
 
-      const recommendationsQuery = `
+      const recommendationsQuery = isAdmin
+      ? `
+        SELECT * FROM user_recommendations
+        WHERE source_article_id IN (${placeholders})
+        ORDER BY source_article_id, date_publish DESC;
+      `
+      : `
         SELECT * FROM user_recommendations
         WHERE user_id = ? AND source_article_id IN (${placeholders})
         ORDER BY source_article_id, date_publish DESC;
       `;
-
-      db.all(recommendationsQuery, [req.user.id, ...interactionNewsIds], (err, allRecommendations) => {
+      
+      const recParams = isAdmin ? interactionNewsIds : [req.user.id, ...interactionNewsIds];
+      db.all(recommendationsQuery, recParams, (err, allRecommendations) => {
         if (err) return res.status(500).json({ error: "Failed to fetch recommendations" });
 
         const grouped = {};
@@ -316,15 +372,23 @@ const resetInteractionsSequence = () => {
 app.delete("/user/interactions/:id", verifyToken, (req, res) => {
   const { id } = req.params;
 
-  // Delete recommendations linked to this interaction
-  const deleteRecommendationsQuery = "DELETE FROM user_recommendations WHERE source_article_id = ? AND user_id = ?";
-  
-  db.run(deleteRecommendationsQuery, [id, req.user.id], function (err) {
+  const isAdmin = req.user.role === "admin";
+  const deleteRecommendationsQuery = isAdmin
+    ? "DELETE FROM user_recommendations WHERE source_article_id = ?"
+    : "DELETE FROM user_recommendations WHERE source_article_id = ? AND user_id = ?";
+
+  const recommendationsParams = isAdmin ? [id] : [id, req.user.id];
+
+  db.run(deleteRecommendationsQuery, recommendationsParams, function (err) {  
     if (err) return res.status(500).json({ error: "Failed to delete recommendations" });
 
     // Delete the interaction itself
-    const deleteInteractionQuery = "DELETE FROM user_interactions WHERE id = ? AND user_id = ?";
-    db.run(deleteInteractionQuery, [id, req.user.id], function (err) {
+    const deleteInteractionQuery = isAdmin
+    ? "DELETE FROM user_interactions WHERE id = ?"
+    : "DELETE FROM user_interactions WHERE id = ? AND user_id = ?";
+
+    const interactionsParams = isAdmin ? [id] : [id, req.user.id];
+    db.run(deleteInteractionQuery, interactionsParams, function (err) {  
       if (err) return res.status(500).json({ error: "Failed to delete interaction" });
 
       if (this.changes === 0) {
@@ -643,6 +707,41 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
         kl_divergence: klDivergence.toFixed(3),
         balance_score: parseFloat(balanceScore),
         balance_message: balanceMessage
+      });
+    });
+  });
+});
+
+// Admin profile
+app.get("/admin/profile", verifyToken, (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ error: "Access denied. Only users with administrative privileges can access this route." });
+  }
+
+  const overview = {};
+
+  db.get("SELECT username, email, political_leaning FROM users WHERE id = ?", [req.user.id], (err, admin) => {
+    if (err) return res.status(500).json({ error: "Error fetching admin user" });
+    if (!admin) return res.status(404).json({ error: "Admin user not found" });
+
+    overview.username = admin.username;
+    overview.email = admin.email;
+    overview.political_leaning = admin.political_leaning;
+
+    db.get("SELECT COUNT(*) as totalUsers FROM users WHERE role = 'user'", [], (err, row) => {
+      if (err) return res.status(500).json({ error: "Error fetching users count" });
+      overview.totalUsers = row.totalUsers;
+
+      db.get("SELECT COUNT(*) as totalInteractions FROM user_interactions", [], (err, row) => {
+        if (err) return res.status(500).json({ error: "Error fetching user interactions count" });
+        overview.totalInteractions = row.totalInteractions;
+
+        db.get("SELECT COUNT(*) as totalRecommendations FROM user_recommendations", [], (err, row) => {
+          if (err) return res.status(500).json({ error: "Error fetching user recommendations count" });
+          overview.totalRecommendations = row.totalRecommendations;
+
+          res.json(overview);
+        });
       });
     });
   });

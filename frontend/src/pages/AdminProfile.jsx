@@ -15,8 +15,6 @@ import {
   Td,
   Avatar,
   IconButton,
-  Badge,
-  SimpleGrid,
   useColorMode,
   useColorModeValue,
   useBreakpointValue,
@@ -29,32 +27,32 @@ import {
   ModalBody,
   ModalCloseButton,
 } from "@chakra-ui/react";
-import { SunIcon, MoonIcon, ChevronDownIcon, WarningIcon, LockIcon } from "@chakra-ui/icons";
+import { SunIcon, MoonIcon, ChevronDownIcon, WarningIcon } from "@chakra-ui/icons";
 import {
+  FaUsers,
+  FaTasks,
   FaUser,
   FaNewspaper,
   FaSignOutAlt,
-  FaCompass,
-  FaEye,
   FaHeart,
+  FaEye,
   FaChartBar,
   FaBalanceScale,
   FaCogs,
+  FaTrashAlt,
 } from "react-icons/fa";
 import { Helmet } from "react-helmet-async";
 
 import { FaTrashCan } from "react-icons/fa6";
-import { GiCapitol, GiBigWave, GiScales } from "react-icons/gi";
 import { useNavigate, Routes, Route } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import GaugeComponent from "react-gauge-component";
 
 import logoBright from '../assets/logo-bright.png';
 import logoDark from '../assets/logo-dark.png';
 
 import BlurOverlay from "../components/BlurOverlay";
 
-import BrowseFeed from "./BrowseFeed";
+import MyUsers from "./MyUsers";
 import MyInteractions from "./MyInteractions";
 import BalanceReport from "./BalanceReport";
 import AccountDetails from "./AccountDetails";
@@ -76,13 +74,26 @@ const gradient = "linear-gradient(to bottom, #b0001a, #c6001e, #e14f64)";
 
 const READ_TIME_THRESHOLD = 120;
 
-const Profile = () => {
+const AdminProfile = () => {
   const navigate = useNavigate();
   // For development only
   const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:5001`;
 
   // For production
   // const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+
+  const [overview, setOverview] = useState({
+    totalUsers: 0,
+    totalInteractions: 0,
+    totalRecommendations: 0,
+    recentUsers: [],
+    recentInteractions: [],
+    recentRecommendations: [],
+  });
+
+  const [users, setUsers] = useState([]);
+  const [interactions, setInteractions] = useState([]);
+  const [isLoadingInteractions, setIsLoadingInteractions] = useState(true);
 
   const [user, setUser] = useState({ username: "", email: "" });
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -106,11 +117,6 @@ const Profile = () => {
   const [userStatus, setUserStatus] = useState(null);
   
   const [loading, setLoading] = useState(true);
-  const [report, setReport] = useState(null);
-
-  const gridColor = useColorModeValue("#B0B0B0", "#888888");
-
-  const [reportRefreshTrigger, setReportRefreshTrigger] = useState(0);
   
   useEffect(() => {
     if (!hasFetched.current) {
@@ -166,42 +172,43 @@ const Profile = () => {
     return `${dayName}, ${monthName} ${date}${dateSuffix}, ${year}`;
   };
 
-  // Fetch user data
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-      return;
-  };
+// Fetch admin data
+useEffect(() => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    navigate("/login");
+    return;
+  }
 
-  const fetchUserData = async () => {
-      try {
-        const response = await fetch(`${BACKEND_URL}/profile`, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
+  const fetchAdminData = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/admin/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setOverview(data);
+        setUser({ username: data.username, email: data.email });
+      } else if (res.status === 403) {
+        navigate("/access-denied", {
+          state: {
+            message: data.error || "Not authorized to access admin panel",
+          },
         });
-        const data = await response.json();
-
-        if (response.ok) {
-          setUser({ username: data.username, email: data.email });
-        } else if (response.status === 403) {
-          navigate("/access-denied", {
-            state: {
-              message: data.error || "To access the profile, use the Admin Panel.",
-            },
-          });
-        } else {
-          console.error("Failed to fetch user data:", data.error);
-          navigate("/login");
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
+      } else {
+        console.error("Failed to fetch admin data:", data.error);
         navigate("/login");
       }
-    };
+    } catch (err) {
+      console.error("Error fetching admin data:", err);
+      navigate("/login");
+    }
+  };
 
-    fetchUserData();
-  }, [navigate]);
+  fetchAdminData();
+}, [navigate]);
 
   const {
     isOpen: isLogoutModalOpen,
@@ -218,9 +225,77 @@ const Profile = () => {
     setOpenDropdown(openDropdown === section ? null : section);
   };
 
-  const [interactions, setInteractions] = useState([]);
-  const [isLoadingInteractions, setIsLoadingInteractions] = useState(true);
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
+      }
 
+      try {
+        const response = await fetch(`${BACKEND_URL}/users`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          setUsers(data);
+        } else {
+          console.error("Failed to fetch users:", data.error);
+        }
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    };
+
+    fetchUsers();
+  }, [navigate]);
+
+  // Delete a user from server
+  const deleteUser = async (id) => {
+    const token = localStorage.getItem("token");
+    try {
+      const response = await fetch(`${BACKEND_URL}/users/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        setUsers((prev) => prev.filter((d) => d.id !== id));
+      } else {
+        console.error("Failed to delete user.");
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+    }
+  };
+
+  const {
+    isOpen: isUserModalOpen,
+    onOpen: onUserModalOpen,
+    onClose: onUserModalClose,
+  } = useDisclosure();
+  const [userToDelete, setUserToDelete] = useState(null);
+
+  const handleDeleteUser = (user) => {
+    setUserToDelete(user);
+    onUserModalOpen();
+  };
+
+  const confirmDeleteUser = async () => {
+    try {
+      if (userToDelete) {
+        // Delete a single detection
+        await deleteUser(userToDelete.id);
+      }
+      onUserModalClose();
+    } catch (error) {
+      console.error("Error deleting detection(s):", error);
+    }
+  };
+  
   useEffect(() => {
     const fetchInteractions = async () => {
       const token = localStorage.getItem("token");
@@ -275,7 +350,6 @@ const Profile = () => {
 
       if (response.ok) {
         setInteractions((prev) => prev.filter((interaction) => interaction.id !== id));
-        setReportRefreshTrigger(prev => prev + 1);
       } else {
         console.error("Failed to delete interaction.");
       }
@@ -285,6 +359,8 @@ const Profile = () => {
   };
 
   const formatDate = (isoString) => {
+    if (!isoString) return "No Available Date";
+
     const date = new Date(isoString);
     return date.toLocaleDateString("en-GB", {
       day: "2-digit",
@@ -294,7 +370,7 @@ const Profile = () => {
       minute: "2-digit",
     });
   };
-
+  
   const {
     isOpen: isInteractionModalOpen,
     onOpen: onInteractionModalOpen,
@@ -327,34 +403,6 @@ const Profile = () => {
     }
   };
 
-  const isReportAvailable = (report) => {
-    return !!report &&
-      typeof report === "object" &&
-      report.engagement_metrics &&
-      report.engagement_metrics.fully_read &&
-      report.engagement_metrics.quick_reads &&
-      report.engagement_metrics.engagement_score &&
-      report.avg_read_time;
-  };
-  
-  useEffect(() => {
-    const fetchReport = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${BACKEND_URL}/user/balance-report`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        setReport(data);
-      } catch (err) {
-        console.error("Error fetching report:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchReport();
-  }, [reportRefreshTrigger]);
-
   const [hasTwoDays, setHasTwoDays] = useState(false);
 
   useEffect(() => {
@@ -378,25 +426,11 @@ const Profile = () => {
 
     setHasTwoDays(uniqueDates.length >= 2);
   }, [interactions]);
-  
-  const getPoliticalIcon = (leaning) => {
-    const iconSize = 15;
-    switch (leaning) {
-      case "RIGHT":
-        return <GiCapitol size={iconSize} />;
-      case "LEFT":
-        return <GiBigWave size={iconSize} />;
-      case "CENTER":
-        return <GiScales size={iconSize} />;
-      default:
-        return null;
-    }
-  };
-    
+      
   return (
     <>
       <Helmet>
-        <title>Political Horizon - Profile</title>
+        <title>Political Horizon - Admin Profile</title>
       </Helmet>
       <Flex direction={{ base: "column", md: "row" }} bg={bg}>
         {/* Sidebar */}
@@ -486,7 +520,7 @@ const Profile = () => {
                   size={{ base: "sm", md: "md" }}
                   color={textColor}
                   width="100%"
-                  onClick={() => navigate("/profile")}
+                  onClick={() => navigate("/admin/profile")}
                 >
                   <HStack w="100%" justifyContent="space-between">
                     <HStack>
@@ -497,7 +531,61 @@ const Profile = () => {
                 </Button>
               </motion.div>
               
-              {/* Explore News Dropdown */}
+
+              {/* All Users Dropdown */}
+              <Box>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button
+                    variant="ghost"
+                    justifyContent="space-between"
+                    _hover={{ color: hoverColor }}
+                    _active={{ color: activeColor }}
+                    size={{ base: "sm", md: "md" }}
+                    onClick={() => toggleDropdown("users")}
+                    color={textColor}
+                    width="100%"
+                  >
+                    <HStack w="100%" justifyContent="space-between">
+                      <HStack>
+                        <FaUsers />
+                        <Text>Users Registered</Text>
+                      </HStack>
+                      <ChevronDownIcon />
+                    </HStack>
+                  </Button>
+                </motion.div>
+                <AnimatePresence initial={false}>
+                  {openDropdown === "users" && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                    <VStack align="stretch" pl="4" mt="2">
+                      <Button
+                        variant="ghost"
+                        justifyContent="flex-start"
+                        size="sm"
+                        _hover={{ color: hoverColor }}
+                        _active={{ color: activeColor }}
+                        color={textColor}
+                        width="100%"
+                        onClick={() => navigate("/admin/profile/my-users")}
+                      >
+                        <HStack>
+                          <FaTasks />
+                          <Text>All Users</Text>
+                        </HStack>
+                      </Button>
+                    </VStack>
+                  </motion.div>
+                  )}
+                </AnimatePresence>
+              </Box>
+              
+              {/* All Interactions Dropdown */}
               <Box>
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
@@ -513,7 +601,7 @@ const Profile = () => {
                     <HStack w="100%" justifyContent="space-between">
                       <HStack>
                         <FaNewspaper />
-                        <Text>Explore News</Text>
+                        <Text>Horizon Explore</Text>
                       </HStack>
                       <ChevronDownIcon />
                     </HStack>
@@ -537,26 +625,11 @@ const Profile = () => {
                         _active={{ color: activeColor }}
                         color={textColor}
                         width="100%"
-                        onClick={() => navigate("/profile/browse-feed")}
-                      >
-                        <HStack>
-                          <FaCompass />
-                          <Text>Browse Your News</Text>
-                        </HStack>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        justifyContent="flex-start"
-                        size="sm"
-                        _hover={{ color: hoverColor }}
-                        _active={{ color: activeColor }}
-                        color={textColor}
-                        width="100%"
                         onClick={() => navigate("/profile/my-interactions")}
                       >
                         <HStack>
-                          <FaHeart />
-                          <Text>My Interactions</Text>
+                          <FaTasks />
+                          <Text>All Interactions</Text>
                         </HStack>
                       </Button>
                     </VStack>
@@ -565,7 +638,7 @@ const Profile = () => {
                 </AnimatePresence>
               </Box>
 
-              {/* Bias Insights Dropdown */}
+              {/* All Balance Reports Dropdown */}
               <Box>
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
@@ -581,7 +654,7 @@ const Profile = () => {
                     <HStack w="100%" justifyContent="space-between">
                       <HStack>
                         <FaEye />
-                        <Text>Bias Insights</Text>
+                        <Text>Horizon Balance</Text>
                       </HStack>
                       <ChevronDownIcon />
                     </HStack>
@@ -608,8 +681,8 @@ const Profile = () => {
                         onClick={() => navigate("/profile/balance-report")}
                       >
                         <HStack>
-                          <FaBalanceScale />
-                          <Text>Balance Report</Text>
+                          <FaTasks />
+                          <Text>All Balance Reports</Text>
                         </HStack>
                       </Button>
                     </VStack>
@@ -658,7 +731,7 @@ const Profile = () => {
                           _active={{ color: activeColor }}
                           color={textColor}
                           width="100%"
-                          onClick={() => navigate("/profile/account-details")}
+                          onClick={() => navigate("/admin/profile/account-details")}
                         >
                           <HStack>
                             <FaUser />
@@ -740,41 +813,29 @@ const Profile = () => {
                     </Box>
                   </motion.div>
 
-                  {/* Key Features */}
+                  {/* Admin Overview */}
                   <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2, duration: 0.5 }}
                   >
-                    <Heading size="lg" mb="4">Key Features</Heading>
+                    <Heading size="lg" mb="4">Admin Overview</Heading>
                     <Flex wrap="wrap" justify="space-between" gap="6">
                       {[
                         {
-                          icon: <FaCompass size="50px" color={primaryColor} style={{ margin: "auto" }} />,
-                          title: "Explore News",
-                          text: {
-                            base: "Discover diverse news articles.",
-                            md: "Discover diverse news articles.",
-                            lg: "Discover diverse news articles tailored to your reading preferences while avoiding ideological bubbles.",
-                          },          
+                          icon: <FaHeart size="50px" color={primaryColor} style={{ margin: "auto" }} />,
+                          title: "Total Interactions",
+                          value: overview?.totalInteractions ?? "-",
                         },
                         {
                           icon: <FaBalanceScale size="50px" color={primaryColor} style={{ margin: "auto" }} />,
-                          title: "Bias Insights",
-                          text: {
-                            base: "Analyze your news consumption bias.",
-                            md: "Analyze your news consumption bias.",
-                            lg: "Analyze and visualize your political news consumption bias and diversity trends over time.",
-                          },          
+                          title: "Total Recommendations",
+                          value: overview?.totalRecommendations ?? "-",
                         },
                         {
-                          icon: <FaNewspaper size="50px" color={primaryColor} style={{ margin: "auto" }} />,
-                          title: "Personalized Recommendations",
-                          text: {
-                            base: "Receive curated news, with controlled exposure.",
-                            md: "Receive curated news, with controlled exposure.",
-                            lg: "Receive curated news based on your interests, with controlled exposure to diverse viewpoints.",
-                          },
+                          icon: <FaUsers size="50px" color={primaryColor} style={{ margin: "auto" }} />,
+                          title: "Total Users",
+                          value: overview?.totalUsers ?? "-",
                         },
                       ].map((item, index) => (
                         <motion.div
@@ -797,7 +858,9 @@ const Profile = () => {
                           >
                             {item.icon}
                             <Heading size="md" mt="4">{item.title}</Heading>
-                            <Text mt="2">{useBreakpointValue(item.text)}</Text>
+                            <Text fontSize="3xl" fontWeight="bold" mt="2" color={textColor}>
+                              {item.value}
+                            </Text>
                           </Box>
                         </motion.div>
                       ))}
@@ -865,7 +928,7 @@ const Profile = () => {
                             bg: useColorModeValue("gray.50", "gray.600"),
                           }}               
                         >
-                          <Heading size="md" mb="4">Daily Interaction Breakdown</Heading>
+                          <Heading size="md" mb="4">Interactions Statistics</Heading>
                           <DailyInteractionBreakdown interactions={interactions} />
                           {userStatus === "new" && (
                             <BlurOverlay message="Interact with a few articles to unlock this section." />
@@ -875,13 +938,81 @@ const Profile = () => {
                     </Flex>
                   </motion.div>
 
-                  {/* Recent Interactions Section */}
+                  {/* Recent Content Section */}
                   <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6, duration: 0.5 }}
                   >
-                    <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Recent Interactions</Heading>
+                    <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Recent Users</Heading>
+                      <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">
+                      {users.length > 0 ? (
+                          <>
+                            <Box overflowX="auto">
+                              <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
+                                <Thead>
+                                  <Tr>
+                                    <Th width="15%" textAlign="center"><b>ID</b></Th>
+                                    <Th width="30%" textAlign="center"><b>Username</b></Th>
+                                    <Th width="30%" textAlign="center"><b>Email</b></Th>
+                                    <Th width="20%" textAlign="center"><b>Last Interaction Time</b></Th>
+                                    <Th width="5%" textAlign="center"><b>Remove</b></Th>
+                                  </Tr>
+                                </Thead>
+                                <Tbody as={motion.tbody}>
+                                  <AnimatePresence>
+                                    {users.slice(0, 5).map((user) => (
+                                      <motion.tr
+                                        key={user.id}
+                                        layout
+                                        initial={{ opacity: 0, y: 50 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -50 }}
+                                        transition={{ duration: 0.5 }}
+                                      >
+                                        <Td textAlign="center">{user.id}</Td>
+                                        <Td textAlign="center">{user.username}</Td>
+                                        <Td textAlign="center">{user.email}</Td> 
+                                        <Td textAlign="center">{formatDate(user.last_recommendation_timestamp)}</Td>
+                                        <Td textAlign="center">
+                                          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                            <Button size="sm" color={primaryColor} onClick={() => handleDeleteUser(user)}>
+                                              <FaTrashAlt />
+                                            </Button>
+                                          </motion.div>
+                                        </Td>
+                                      </motion.tr>
+                                    ))}
+                                  </AnimatePresence>
+                                </Tbody>
+                              </Table>
+                            </Box>
+                          </>
+                        ) : (
+                          <motion.div
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 15 }}
+                            transition={{ duration: 0.5 }}
+                          >
+                            <Flex align="center" justify="center" direction="column" h="15vh">
+                              <WarningIcon boxSize="6" color="gray.500" mb="2" />
+                              <Text fontSize="lg" color="gray.500" textAlign="center">
+                                No users have registered.
+                              </Text>
+                            </Flex>
+                          </motion.div>
+                        )}
+                      </Box>
+                  </motion.div>
+
+                  {/* Recent Suggested News Section */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8, duration: 0.5 }}
+                  >
+                    <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Recent Suggested News</Heading>
                       <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">
                         {interactions.some((i) => i.interaction_type === "like" || (i.interaction_type === "read" && i.read_time_seconds >= READ_TIME_THRESHOLD)) ? (
                           <>
@@ -889,9 +1020,11 @@ const Profile = () => {
                               <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
                                 <Thead>
                                   <Tr>
+                                    <Th width="10%" textAlign="center"><b>News ID</b></Th>
+                                    <Th width="30%" textAlign="center">Interacted Article</Th>
+                                    <Th width="30%" textAlign="center">Suggested News</Th>
+                                    <Th width="10%" textAlign="center"><b>User ID</b></Th>
                                     <Th width="10%" textAlign="center"><b>Date</b></Th>
-                                    <Th width="40%" textAlign="center">Interacted Article</Th>
-                                    <Th width="40%" textAlign="center">Suggested News</Th>
                                     <Th width="10%" textAlign="center">Remove</Th>
                                   </Tr>
                                 </Thead>
@@ -909,7 +1042,7 @@ const Profile = () => {
                                           exit={{ opacity: 0, y: -50 }}
                                           transition={{ duration: 0.5 }}
                                         >
-                                          <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>
+                                          <Td textAlign="center">#{interaction.id}</Td>
                                           {/* Interacted Article */}
                                           <Td textAlign="justify">
                                             <Box mb={2}>
@@ -960,6 +1093,8 @@ const Profile = () => {
                                               <Text color="gray.400">No suggested news</Text>
                                             )}
                                           </Td>
+                                          <Td textAlign="center">{interaction.user_id}</Td>
+                                          <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>
                                           <Td textAlign="center">
                                             <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                                               <IconButton
@@ -988,156 +1123,145 @@ const Profile = () => {
                               <Text fontSize="lg" color="gray.500" textAlign="center">
                                 No suggested news found.
                               </Text>
-                              <Text fontSize="md" color="gray.400" textAlign="center">
-                                Engage with articles by liking them or spending more time reading. Horizon Explore will then provide personalized recommendations, while maintaining a balanced and diverse perspective.
+                            </Flex>
+                          </motion.div>
+                        )}
+                      </Box>
+                  </motion.div>
+                  {/* Recent Not Relevant News Section */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8, duration: 0.5 }}
+                  >
+                    <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Recent Not Relevant News</Heading>
+                      <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">
+                        {interactions.some((i) => i.interaction_type === "dislike" || (i.interaction_type === "read" && i.read_time_seconds < READ_TIME_THRESHOLD)) ? (
+                          <>
+                            <Box overflowX="auto">
+                              <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
+                                <Thead>
+                                  <Tr>
+                                    <Th width="10%" textAlign="center"><b>News ID</b></Th>
+                                    <Th width="30%" textAlign="center">Interacted Article</Th>
+                                    <Th width="30%" textAlign="center">Not Relevant News</Th>
+                                    <Th width="10%" textAlign="center"><b>User ID</b></Th>
+                                    <Th width="10%" textAlign="center"><b>Date</b></Th>
+                                    <Th width="10%" textAlign="center">Remove</Th>
+                                  </Tr>
+                                </Thead>
+                                <Tbody as={motion.tbody}>
+                                  <AnimatePresence>
+                                    {interactions
+                                      .filter((interaction) => interaction.interaction_type === "dislike" || (interaction.interaction_type === "read" && interaction.read_time_seconds < READ_TIME_THRESHOLD))
+                                      .slice(0, 2)
+                                      .map((interaction) => (
+                                        <motion.tr
+                                          key={interaction.id}
+                                          layout
+                                          initial={{ opacity: 0, y: 50 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          exit={{ opacity: 0, y: -50 }}
+                                          transition={{ duration: 0.5 }}
+                                        >
+                                          <Td textAlign="center">#{interaction.id}</Td>
+                                          {/* Interacted Article */}
+                                          <Td textAlign="justify">
+                                            <Box mb={2}>
+                                              <Text fontWeight="semibold">
+                                                <a 
+                                                  href={interaction.url} 
+                                                  target="_blank" 
+                                                  rel="noopener noreferrer" 
+                                                  style={{ 
+                                                    color: "inherit", 
+                                                    textDecoration: "none", 
+                                                    transition: "text-decoration 0.2s ease-in-out"
+                                                  }}
+                                                  onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
+                                                  onMouseLeave={(e) => e.target.style.textDecoration = "none"}
+                                                >
+                                                  {interaction.headline || "Unknown Article"}
+                                                </a>
+                                              </Text>
+                                              <Text fontSize="sm" color="gray.500">{interaction.outlet || "Unknown Outlet"}</Text>
+                                            </Box>
+                                          </Td>
+                                          {/* Suggested News */}
+                                          <Td textAlign="justify">
+                                            {interaction.recommendations.length > 0 ? (
+                                              interaction.recommendations.map((rec, index) => (
+                                                <Box key={index} mb={2}>
+                                                  <Text fontWeight="semibold">
+                                                    <a 
+                                                      href={rec.url} 
+                                                      target="_blank" 
+                                                      rel="noopener noreferrer" 
+                                                      style={{ 
+                                                        color: "inherit", 
+                                                        textDecoration: "none", 
+                                                        transition: "text-decoration 0.2s ease-in-out"
+                                                      }}
+                                                      onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
+                                                      onMouseLeave={(e) => e.target.style.textDecoration = "none"}
+                                                    >
+                                                      {rec.headline}
+                                                    </a>
+                                                  </Text>
+                                                  <Text fontSize="sm" color="gray.500">{rec.outlet}</Text>
+                                                </Box>
+                                              ))
+                                            ) : (
+                                              <Text color="gray.400">No suggested news</Text>
+                                            )}
+                                          </Td>
+                                          <Td textAlign="center">{interaction.user_id}</Td>
+                                          <Td textAlign="center">{formatDate(interaction.interaction_timestamp)}</Td>
+                                          <Td textAlign="center">
+                                            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                              <IconButton
+                                                icon={<FaTrashCan />}
+                                                color={primaryColor}
+                                                onClick={() => handleDeleteInteraction(interaction)}
+                                              />
+                                            </motion.div>
+                                          </Td>
+                                        </motion.tr>
+                                      ))}
+                                  </AnimatePresence>
+                                </Tbody>
+                              </Table>
+                            </Box>
+                          </>
+                        ) : (
+                          <motion.div
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 15 }}
+                            transition={{ duration: 0.5 }}
+                          >
+                            <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "15vh" }}>
+                              <WarningIcon boxSize="6" color="gray.500" mb="2" />
+                              <Text fontSize="lg" color="gray.500" textAlign="center">
+                                No less relevant news found.
                               </Text>
                             </Flex>
                           </motion.div>
                         )}
                       </Box>
                   </motion.div>
-                  
-                  {/* Bias Insights History Section */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8, duration: 0.5 }}
-                  >
-                    <Heading fontSize={{ base: '2xl', md: '3xl' }} my="6">Bias Insights History</Heading>
-                    <Box bg={cardBg} p="5" borderRadius="md" overflowX="auto" shadow="md">
-                    {userStatus === "new" || !isReportAvailable(report) ? (
-                      <Flex align="center" justify="center" direction="column" h={{ base: "auto", md: "20vh" }}>
-                        <LockIcon boxSize="6" color="gray.500" mb="2" />
-                        <Text fontSize="lg" color="gray.500" textAlign="center">
-                          Like or read a few articles to unlock this feature.
-                        </Text>
-                        <Text fontSize="md" color="gray.400" textAlign="center">
-                          To access Horizon Balance bias insights, please interact with a few articles. Once interactions are recorded, your personalized report will be generated automatically and available here.
-                        </Text>
-                      </Flex>
-                    ) : report ? (
-                      <>
-                        <Text fontWeight="bold" fontSize="xl" mb="2">Political Exposure</Text>    
-                        <SimpleGrid columns={{ base: 1, md: 1, lg: 3 }} spacing={4} mb="6">
-                          {["LEFT", "CENTER", "RIGHT"].map((leaning) => (
-                            <Badge
-                              key={leaning}
-                              colorScheme={leaning === "RIGHT" ? "red" : leaning === "LEFT" ? "blue" : "yellow"}
-                              p={2}
-                              display="flex"
-                              alignItems="center"
-                              gap="2"
-                              justifyContent="center"
-                              width="full"
-                          >
-                            {getPoliticalIcon(leaning)}
-                              <Text fontSize="sm" fontWeight="bold">
-                                {leaning}: {((report.interactions[leaning] / Object.values(report.interactions).reduce((a, b) => a + b, 0)) * 100).toFixed(1)}%
-                              </Text>
-                            </Badge>
-                          ))}
-                        </SimpleGrid>
-                        <Box overflowX="auto">
-                          <Text fontWeight="bold" fontSize="xl" mb="2">Reading Engagement</Text>
-                          <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
-                            <Thead>
-                              <Tr>
-                                <Th width="20%" textAlign="center">Leaning</Th>
-                                <Th width="20%" textAlign="center">Avg Read Time (s)</Th>
-                                <Th width="20%" textAlign="center">Fully Read (%)</Th>
-                                <Th width="20%" textAlign="center">Quick Reads (%)</Th>
-                                <Th width="20%" textAlign="center">Engagement Score</Th>
-                              </Tr>
-                            </Thead>
-                            <Tbody as={motion.tbody}>
-                              <AnimatePresence>
-                                {["LEFT", "CENTER", "RIGHT"].map((leaning) => (
-                                  <motion.tr
-                                    key={leaning}
-                                    layout
-                                    initial={{ opacity: 0, y: 50 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -50 }}
-                                    transition={{ duration: 0.5 }}
-                                  >
-                                    <Td fontWeight="semibold" textAlign="left">{leaning}</Td>
-                                    <Td textAlign="center">{report.avg_read_time[leaning]} sec</Td>
-                                    <Td textAlign="center">{report.engagement_metrics.fully_read[leaning]}%</Td>
-                                    <Td textAlign="center">{report.engagement_metrics.quick_reads[leaning]}%</Td>
-                                    <Td textAlign="center">{report.engagement_metrics.engagement_score[leaning]}</Td>
-                                  </motion.tr>
-                                ))}
-                              </AnimatePresence>
-                            </Tbody>
-                          </Table>
-                        </Box>
-                        <Text fontWeight="bold" fontSize="xl" mb="2">Balance Score</Text>    
-                        <GaugeComponent
-                          key={colorMode}
-                          type="semicircle"
-                          value={report.balance_score * 100}
-                          minValue={0}
-                          maxValue={100}
-                          style={{ width: "100%", maxWidth: "350px", margin: "0 auto" }}
-                          arc={{
-                            width: 0.3,
-                            padding: 0.015,
-                            cornerRadius: 3,
-                            subArcs: [                    
-                              { limit: 30, color: "#FEB2B2" },
-                              { limit: 60, color: "#FBD38D" },
-                              { limit: 100, color: "#9AE6B4" },
-                            ],
-                          }}
-                          pointer={{
-                            type: "blob",
-                            color: "#222",
-                            baseColor: "#fff",
-                            strokeWidth: 2,
-                            width: 25,
-                            length: 0.45,
-                            animate: true,
-                            animationDuration: 2000,
-                          }}
-                          labels={{
-                            valueLabel: {
-                              formatTextValue: (value) => `${value.toFixed(1)}%`,
-                              style: {
-                                fill: textColor,
-                                fontWeight: "bold",
-                                fontSize: "26px",
-                                textShadow: "none",
-                              },
-                            },
-                            tickLabels: {
-                              type: "outer",
-                              ticks: [
-                                { value: 0, label: "0%" },
-                                { value: 50, label: "50%" },
-                                { value: 100, label: "100%" },
-                              ],
-                              style: {
-                                fill: gridColor,
-                                fontSize: "14px",
-                                textShadow: "none",
-                              },
-                            },
-                          }}
-                        />
-                        <Text textAlign="center">{report.balance_message}</Text>
-                    </>
-                    ) : (
-                      <Text fontSize="md" color="gray.400" textAlign="center">Error loading report data.</Text>
-                    )} 
-                    </Box>
-                  </motion.div>
                 </Flex>
               }
             />
             <Route
-              path="/browse-feed"
-              element={<BrowseFeed setReportRefreshTrigger={setReportRefreshTrigger} />}
-              />
+              path="/my-users"
+              element={
+                <MyUsers
+                  users={users}
+                  deleteUser={deleteUser}
+                />
+              }
+            />
             <Route
               path="/my-interactions"
               element={
@@ -1156,7 +1280,7 @@ const Profile = () => {
               path="*"
               element={
                 <Flex flex="1" justify="center" align="center" flexDirection="column" height="100%">
-                  <NotFound buttonText="Go Back to Dashboard" redirectPath="/profile" />
+                  <NotFound buttonText="Go Back to Admin Dashboard" redirectPath="/admin/profile" />
                 </Flex>
               }
             />
@@ -1181,6 +1305,32 @@ const Profile = () => {
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                   <Button onClick={onLogoutModalClose}>
+                    Cancel
+                  </Button>
+                </motion.div>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+
+          {/* Users Confirmation Modal */}
+          <Modal isOpen={isUserModalOpen} onClose={onUserModalClose} isCentered>
+            <ModalOverlay />
+              <ModalContent
+                width={{ base: "90%"}}
+              >
+              <ModalHeader>Confirm Deletion</ModalHeader>
+              <ModalCloseButton />
+              <ModalBody>
+                Are you sure you want to delete user <b>{userToDelete?.username}</b> and all their data (interactions and recommendations)?
+              </ModalBody>
+              <ModalFooter>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button colorScheme="red" mr={3} onClick={confirmDeleteUser}>
+                    Delete
+                  </Button>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button onClick={onUserModalClose}>
                     Cancel
                   </Button>
                 </motion.div>
@@ -1221,4 +1371,4 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default AdminProfile;
