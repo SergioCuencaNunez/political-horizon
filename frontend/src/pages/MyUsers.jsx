@@ -11,6 +11,7 @@ import {
   Tr,
   Th,
   Td,
+  Badge,
   Button,
   IconButton,
   Checkbox,
@@ -31,6 +32,7 @@ import {
   MoonIcon,
   WarningIcon,
 } from "@chakra-ui/icons";
+import { GiCapitol, GiBigWave, GiScales } from "react-icons/gi";
 import { motion, AnimatePresence } from "framer-motion";
 
 const primaryColorLight = '#c6001e';
@@ -49,16 +51,16 @@ const MyUsers = ({ users, deleteUser }) => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        try {
-          const decoded = JSON.parse(atob(token.split('.')[1]));
-          if (decoded?.role === "admin") setIsAdmin(true);
-        } catch (e) {
-          console.error("Failed to decode token", e);
-        }
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const decoded = JSON.parse(atob(token.split('.')[1]));
+        if (decoded?.role === "admin") setIsAdmin(true);
+      } catch (e) {
+        console.error("Failed to decode token", e);
       }
-    }, []);
+    }
+  }, []);
   
   const handleDelete = (user) => {
     setUserToDelete(user);
@@ -112,6 +114,20 @@ const MyUsers = ({ users, deleteUser }) => {
     });
   };
 
+  const getPoliticalIcon = (leaning) => {
+      const iconSize = 15;
+      switch (leaning) {
+        case "Right":
+          return <GiCapitol size={iconSize} />;
+        case "Left":
+          return <GiBigWave size={iconSize} />;
+        case "Center":
+          return <GiScales size={iconSize} />;
+        default:
+          return null;
+      }
+    };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
@@ -140,10 +156,11 @@ const MyUsers = ({ users, deleteUser }) => {
                     <Tr>
                       <Th width="10%" textAlign="center"><b>ID</b></Th>
                       <Th width="20%" textAlign="center"><b>Username</b></Th>
-                      <Th width="30%" textAlign="center"><b>Email</b></Th>
+                      <Th width="20%" textAlign="center"><b>Email</b></Th>
+                      <Th width="20%" textAlign="center"><b>Political Leaning</b></Th>
                       <Th width="20%" textAlign="center"><b>Last Interaction Time</b></Th>
-                      <Th width="10%" textAlign="center"><b>Remove</b></Th>
-                      <Th width="10%" textAlign="center"><b>Select</b></Th>
+                      <Th width="5%" textAlign="center"><b>Remove</b></Th>
+                      <Th width="5%" textAlign="center"><b>Select</b></Th>
                     </Tr>
                   </Thead>
                   <Tbody as={motion.tbody}>
@@ -160,6 +177,28 @@ const MyUsers = ({ users, deleteUser }) => {
                           <Td textAlign="center">{user.id}</Td>
                           <Td textAlign="center">{user.username}</Td>
                           <Td textAlign="center">{user.email}</Td> 
+                          <Td textAlign="center">
+                            <Badge
+                              colorScheme={
+                                user.political_leaning === "Right"
+                                  ? "red"
+                                  : user.political_leaning === "Left"
+                                  ? "blue"
+                                  : "yellow"
+                              }
+                              p={2}
+                              display="flex"
+                              alignItems="center"
+                              gap="2"
+                              justifyContent="center"
+                              width="full"
+                            >
+                              {getPoliticalIcon(user.political_leaning)}
+                              <Text fontSize="sm" fontWeight="bold">
+                                {user.political_leaning}
+                              </Text>
+                            </Badge>
+                          </Td>
                           <Td textAlign="center">{formatDate(user.last_recommendation_timestamp)}</Td>
                           <Td textAlign="center">
                             <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
@@ -244,7 +283,7 @@ const MyUsers = ({ users, deleteUser }) => {
               </ModalBody>
               <ModalFooter>
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                  <Button colorScheme="red" mr={3} onClick={confirmDelete}>
+                  <Button colorScheme="blue" mr={3} onClick={confirmDelete}>
                     Delete
                   </Button>
                 </motion.div>

@@ -11,6 +11,7 @@ import {
   Tr,
   Th,
   Td,
+  Divider,
   Button,
   IconButton,
   Checkbox,
@@ -436,7 +437,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
                       </Tbody>
                     </Table>
                   </Box>
-                  <Flex justify="space-between" align="center" height="40px">
+                  <Flex justify="space-between" align="center" height="40px" mb="4">
                     <Checkbox 
                       isChecked={selectedSuggested.length === interactions.filter(i => i.interaction_type === "like" || (i.interaction_type === "read" && i.read_time_seconds >= READ_TIME_THRESHOLD)).length} 
                       onChange={(e) => handleSelectAllSuggested(e.target.checked)}
@@ -493,13 +494,15 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
               )}
           </motion.div>
 
+          <Divider mb="4" />
+
           {/* Not Relevant News Table */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8, duration: 0.5 }}
           >
-            <Heading fontSize="2xl" mt="4" mb="2">Not Relevant News</Heading>
+            <Heading fontSize="2xl" mb="2">Not Relevant News</Heading>
             {userStatus === "returning" && 
               <Text mb="4" textAlign="justify">{notRelevantText}</Text>
             }

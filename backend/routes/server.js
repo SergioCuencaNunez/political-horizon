@@ -466,250 +466,467 @@ app.get("/articles/random", verifyToken, (req, res) => {
 
 // Get the user's balance report
 app.get("/user/balance-report", verifyToken, (req, res) => {
-
+  const requestedUserId = req.query.userId;
+  const isAdmin = req.user.role === "admin";
+  const userId = isAdmin && requestedUserId ? parseInt(requestedUserId) : req.user.id;
+  let userData = null;
+  
   const READ_TIME_THRESHOLD = 120;  // Interesting Read
   const FULL_READ_THRESHOLD = 90;   // Fully Read
   const MIN_READ_WEIGHT = 10;       // Minimum value for short reads
   const MAX_READ_WEIGHT = 180;      // Maximum value for long reads
   const LIKE_WEIGHT = READ_TIME_THRESHOLD; // A like is considered a 2-minute read
 
-  const userId = req.user.id;
+  const userQuery = `SELECT id, username, political_leaning FROM users WHERE id = ?`;
+  db.get(userQuery, [userId], (err, row) => {
+    if (err || !row) {
+      return res.status(500).json({ error: "Failed to fetch user info" });
+    }
+    userData = row;
 
-  const interactionsQuery = `
-    SELECT id, read_time_seconds, interaction_type
-    FROM user_interactions
-    WHERE user_id = ? AND ((interaction_type = 'read') OR interaction_type = 'like')
+    const interactionsQuery = `
+      SELECT id, read_time_seconds, interaction_type
+      FROM user_interactions
+      WHERE user_id = ? AND ((interaction_type = 'read') OR interaction_type = 'like')
+    `;
+
+    db.all(interactionsQuery, [userId], (err, interactionRows) => {
+      if (err) return res.status(500).json({ error: "Failed to fetch user interactions" });
+
+      if (interactionRows.length === 0) {
+        return res.json({
+          political_leaning: "N/A",
+          interactions: { LEFT: 0, CENTER: 0, RIGHT: 0 },
+          unique_outlets_read: 0,
+          most_frequented_sources: [],
+          avg_read_time: { LEFT: "N/A", CENTER: "N/A", RIGHT: "N/A" },
+          reading_behavior_message: "No reading data available.",
+          shannon_entropy: "N/A",
+          kl_divergence: "N/A",
+          balance_score: 0,
+          balance_message: "Not enough data to determine balance.",
+        });
+      }
+
+      // Extract article IDs
+      const articleIds = interactionRows.map(row => row.id);
+      
+      // Query to fetch political leaning and outlet info from news_articles
+      const articlesQuery = `
+        SELECT id, political_leaning, outlet
+        FROM news_articles
+        WHERE id IN (${articleIds.map(() => "?").join(",")})
+      `;
+
+      db.all(articlesQuery, articleIds, (err, articleRows) => {
+        if (err) return res.status(500).json({ error: "Failed to fetch article details" });
+
+        const counts = { LEFT: 0, CENTER: 0, RIGHT: 0 };
+        const totalReadTime = { LEFT: 0, CENTER: 0, RIGHT: 0 };
+        const readCounts = { LEFT: 0, CENTER: 0, RIGHT: 0 };
+        const outletsCount = {};
+        const outletReadTime = {};
+        const outlets = new Set();
+        const fullyReadCount = { LEFT: 0, CENTER: 0, RIGHT: 0 };
+        const quickReadCount = { LEFT: 0, CENTER: 0, RIGHT: 0 };
+        
+        // Map articles by ID for quick lookup
+        const articleMap = Object.fromEntries(articleRows.map(article => [article.id, article]));
+
+        // Process interactions
+        interactionRows.forEach(row => {
+          const article = articleMap[row.id];
+          if (!article) return;
+
+          const leaning = article.political_leaning;
+          const readTime = row.read_time_seconds;
+          const interactionType = row.interaction_type;
+
+          // Count read times ONLY for 'read' interactions
+          if (interactionType === "read" && readTime > 0) {
+            totalReadTime[leaning] += readTime;
+            readCounts[leaning] += 1;
+            if (readTime >= FULL_READ_THRESHOLD) fullyReadCount[leaning]++;
+            else if (readTime < FULL_READ_THRESHOLD) quickReadCount[leaning]++;
+          }
+
+          const timeWeight = interactionType === "like"
+          ? LIKE_WEIGHT
+          : Math.max(MIN_READ_WEIGHT, Math.min(MAX_READ_WEIGHT, readTime || 0));
+
+          if (leaning) counts[leaning] += timeWeight;
+
+          if (article.outlet) {
+            outlets.add(article.outlet);
+            outletsCount[article.outlet] = (outletsCount[article.outlet] || 0) + timeWeight;
+          }
+
+          if (interactionType === "read" && readTime > 0 && article.outlet) {
+            outletReadTime[article.outlet] = (outletReadTime[article.outlet] || 0) + readTime;
+          }        
+        });
+
+        // Smoothing to avoid zero probs
+        const epsilon = 1e-10;
+        const total = counts.LEFT + counts.CENTER + counts.RIGHT;
+        const probs = {
+          LEFT: total > 0 ? counts.LEFT / total : epsilon,
+          CENTER: total > 0 ? counts.CENTER / total : epsilon,
+          RIGHT: total > 0 ? counts.RIGHT / total : epsilon
+        };
+
+        // Apply epsilon if any prob is 0
+        Object.keys(probs).forEach(key => {
+          if (probs[key] === 0) probs[key] = epsilon;
+        });
+
+        // Normalize to ensure sum == 1 after smoothing
+        const sumProbs = probs.LEFT + probs.CENTER + probs.RIGHT;
+        probs.LEFT /= sumProbs;
+        probs.CENTER /= sumProbs;
+        probs.RIGHT /= sumProbs;
+
+        // Shannon Entropy
+        const shannonEntropy = -(
+          probs.LEFT * Math.log2(probs.LEFT) +
+          probs.CENTER * Math.log2(probs.CENTER) +
+          probs.RIGHT * Math.log2(probs.RIGHT)
+        );
+
+        // KL Divergence from uniform distribution
+        const uniform = 1 / 3;
+        const klDivergence = (
+          probs.LEFT * Math.log2(probs.LEFT / uniform) +
+          probs.CENTER * Math.log2(probs.CENTER / uniform) +
+          probs.RIGHT * Math.log2(probs.RIGHT / uniform)
+        );
+
+        // Most Frequented Sources
+        const sortedOutlets = Object.entries(outletsCount)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([outlet, count]) => ({ outlet, count }));
+
+        // Top Outlets by Time Read
+        const topOutletsByTimeRead = Object.entries(outletReadTime)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([outlet, time]) => ({ outlet, time_read_seconds: Math.round(time) }));
+
+        // Source Diversity Score
+        const numUniqueOutlets = outlets.size;
+        const diversityFactor = ['LEFT', 'CENTER', 'RIGHT'].filter(k => counts[k] > 0).length / 3;
+        const maxGroupCount = Math.max(counts.LEFT, counts.CENTER, counts.RIGHT);
+        const exposureFactor = 1 - (maxGroupCount / total);
+        const balanceScore = (diversityFactor * exposureFactor).toFixed(3);
+        
+        // Engagement Score
+        const totalReadCount = {
+          LEFT: fullyReadCount.LEFT + quickReadCount.LEFT,
+          CENTER: fullyReadCount.CENTER + quickReadCount.CENTER,
+          RIGHT: fullyReadCount.RIGHT + quickReadCount.RIGHT,
+        };
+        const fullyReadPercentage = {
+          LEFT: totalReadCount.LEFT > 0 ? ((fullyReadCount.LEFT / totalReadCount.LEFT) * 100).toFixed(1) : "0.0",
+          CENTER: totalReadCount.CENTER > 0 ? ((fullyReadCount.CENTER / totalReadCount.CENTER) * 100).toFixed(1) : "0.0",
+          RIGHT: totalReadCount.RIGHT > 0 ? ((fullyReadCount.RIGHT / totalReadCount.RIGHT) * 100).toFixed(1) : "0.0",
+        };
+        const quickReadPercentage = {
+          LEFT: totalReadCount.LEFT > 0 ? ((quickReadCount.LEFT / totalReadCount.LEFT) * 100).toFixed(1) : "0.0",
+          CENTER: totalReadCount.CENTER > 0 ? ((quickReadCount.CENTER / totalReadCount.CENTER) * 100).toFixed(1) : "0.0",
+          RIGHT: totalReadCount.RIGHT > 0 ? ((quickReadCount.RIGHT / totalReadCount.RIGHT) * 100).toFixed(1) : "0.0",
+        };
+        const engagementScore = {
+          LEFT: totalReadCount.LEFT > 0 ? ((fullyReadCount.LEFT / totalReadCount.LEFT) * 100).toFixed(1) : "0.0",
+          CENTER: totalReadCount.CENTER > 0 ? ((fullyReadCount.CENTER / totalReadCount.CENTER) * 100).toFixed(1) : "0.0",
+          RIGHT: totalReadCount.RIGHT > 0 ? ((fullyReadCount.RIGHT / totalReadCount.RIGHT) * 100).toFixed(1) : "0.0",
+        };
+
+        // Compute **Average Read Time (Only for Read Articles)**
+        const avgReadTime = {
+          LEFT: readCounts.LEFT > 0 ? (totalReadTime.LEFT / readCounts.LEFT).toFixed(1) : "N/A",
+          CENTER: readCounts.CENTER > 0 ? (totalReadTime.CENTER / readCounts.CENTER).toFixed(1) : "N/A",
+          RIGHT: readCounts.RIGHT > 0 ? (totalReadTime.RIGHT / readCounts.RIGHT).toFixed(1) : "N/A"
+        };
+
+        // **Reading Engagement Insight**
+        const totalSeconds = totalReadTime.LEFT + totalReadTime.CENTER + totalReadTime.RIGHT;
+        if (totalSeconds === 0) {
+          readingBehaviorMessage = "No reading data available.";
+        } else {
+          const pct = {
+            LEFT: (totalReadTime.LEFT / totalSeconds) * 100,
+            CENTER: (totalReadTime.CENTER / totalSeconds) * 100,
+            RIGHT: (totalReadTime.RIGHT / totalSeconds) * 100
+          };
+
+          const sorted = Object.entries(pct).sort((a, b) => b[1] - a[1]);
+          const [top, second] = sorted;
+          const diff = top[1] - second[1];
+
+          if (diff >= 10) {
+            if (top[0] === "LEFT") {
+              readingBehaviorMessage = "You dedicate significantly more reading time to left-leaning articles. Consider exploring other perspectives for a more balanced view.";
+            } else if (top[0] === "RIGHT") {
+              readingBehaviorMessage = "You spend more time on right-leaning articles. Diversifying your reading across the spectrum could enhance your understanding.";
+            } else {
+              readingBehaviorMessage = "You invest most of your reading time in center-leaning articles. Exploring left and right perspectives may offer additional context.";
+            }
+          } else {
+            readingBehaviorMessage = "Your reading time appears balanced across political leanings.";
+          }
+        }
+        
+        // **Balance Message**
+        let balanceMessage = "You're consuming a diverse mix of political perspectives. Well done!";
+        if (balanceScore < 0.3) {
+          const dominantLeaning = 
+            counts.LEFT > counts.CENTER && counts.LEFT > counts.RIGHT ? "LEFT"
+            : counts.RIGHT > counts.CENTER ? "RIGHT"
+            : "CENTER";
+          balanceMessage = `Your interactions are heavily skewed toward ${dominantLeaning.toLowerCase()}-leaning content. Try branching out to gain a more complete picture.`;
+        } else if (balanceScore < 0.6) {
+          balanceMessage = "You're engaging with more than one perspective, but there's still a noticeable imbalance. A wider variety of sources can improve your news diet.";
+        }
+
+        res.json({
+          user_id: userData.id,
+          username: userData.username,
+          declared_political_leaning: userData.political_leaning,
+          political_leaning: counts.LEFT > counts.CENTER && counts.LEFT > counts.RIGHT ? "LEFT"
+                          : counts.RIGHT > counts.CENTER ? "RIGHT" : "CENTER",
+          interactions: counts,
+          unique_outlets_read: numUniqueOutlets,
+          most_frequented_sources: sortedOutlets,
+          time_read_per_outlet: topOutletsByTimeRead,
+          avg_read_time: avgReadTime,
+          reading_behavior_message: readingBehaviorMessage,
+          engagement_metrics: {
+            fully_read: {
+              LEFT: fullyReadPercentage.LEFT,
+              CENTER: fullyReadPercentage.CENTER,
+              RIGHT: fullyReadPercentage.RIGHT
+            },
+            quick_reads: {
+              LEFT: quickReadPercentage.LEFT,
+              CENTER: quickReadPercentage.CENTER,
+              RIGHT: quickReadPercentage.RIGHT
+            },
+            engagement_score: {
+              LEFT: engagementScore.LEFT,
+              CENTER: engagementScore.CENTER,
+              RIGHT: engagementScore.RIGHT
+            },
+          },
+          shannon_entropy: shannonEntropy.toFixed(3),
+          kl_divergence: klDivergence.toFixed(3),
+          balance_score: parseFloat(balanceScore),
+          balance_message: balanceMessage
+        });
+      });
+    });
+  });
+});
+
+app.get("/admin/balance-summary", verifyToken, (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ error: "Access denied. Only admins can access this route." });
+  }
+
+  const getUsersQuery = "SELECT id FROM users WHERE role = 'user'";
+  db.all(getUsersQuery, [], (err, users) => {
+    if (err) return res.status(500).json({ error: "Failed to fetch users" });
+
+    const userIds = users.map(u => u.id);
+    const results = [];
+
+    let processed = 0;
+
+    userIds.forEach((userId) => {
+      const interactionsQuery = `
+        SELECT id, read_time_seconds, interaction_type
+        FROM user_interactions
+        WHERE user_id = ? AND (interaction_type = 'read' OR interaction_type = 'like')
+      `;
+
+      db.all(interactionsQuery, [userId], (err, interactions) => {
+        if (err) return;
+
+        if (interactions.length === 0) {
+          results.push({
+            user_id: userId,
+            exposure: { LEFT: 0, CENTER: 0, RIGHT: 0 },
+            top_read_outlet: "N/A",
+            top_freq_outlet: "N/A",
+            shannon_entropy: "N/A",
+            kl_divergence: "N/A",
+            balance_score: 0,
+          });
+          processed++;
+          if (processed === userIds.length) return res.json(results);
+          return;
+        }
+
+        const articleIds = interactions.map((row) => row.id);
+        const placeholders = articleIds.map(() => "?").join(",");
+
+        const articlesQuery = `
+          SELECT id, political_leaning, outlet
+          FROM news_articles
+          WHERE id IN (${placeholders})
+        `;
+
+        db.all(articlesQuery, articleIds, (err, articles) => {
+          if (err) return;
+
+          const counts = { LEFT: 0, CENTER: 0, RIGHT: 0 };
+          const outletsCount = {};
+          const outletReadTime = {};
+
+          const articleMap = Object.fromEntries(articles.map((a) => [a.id, a]));
+
+          interactions.forEach((row) => {
+            const article = articleMap[row.id];
+            if (!article) return;
+
+            const leaning = article.political_leaning;
+            const timeWeight = row.interaction_type === "like" ? 120 : Math.max(10, Math.min(180, row.read_time_seconds || 0));
+
+            counts[leaning] += timeWeight;
+
+            if (article.outlet) {
+              outletsCount[article.outlet] = (outletsCount[article.outlet] || 0) + timeWeight;
+              if (row.interaction_type === "read") {
+                outletReadTime[article.outlet] = (outletReadTime[article.outlet] || 0) + row.read_time_seconds;
+              }
+            }
+          });
+
+          const total = counts.LEFT + counts.CENTER + counts.RIGHT;
+          const epsilon = 1e-10;
+          const probs = {
+            LEFT: total > 0 ? counts.LEFT / total : epsilon,
+            CENTER: total > 0 ? counts.CENTER / total : epsilon,
+            RIGHT: total > 0 ? counts.RIGHT / total : epsilon,
+          };
+
+          Object.keys(probs).forEach((key) => {
+            if (probs[key] === 0) probs[key] = epsilon;
+          });
+
+          const norm = probs.LEFT + probs.CENTER + probs.RIGHT;
+          probs.LEFT /= norm;
+          probs.CENTER /= norm;
+          probs.RIGHT /= norm;
+
+          const shannon = -(
+            probs.LEFT * Math.log2(probs.LEFT) +
+            probs.CENTER * Math.log2(probs.CENTER) +
+            probs.RIGHT * Math.log2(probs.RIGHT)
+          );
+
+          const uniform = 1 / 3;
+          const kl = (
+            probs.LEFT * Math.log2(probs.LEFT / uniform) +
+            probs.CENTER * Math.log2(probs.CENTER / uniform) +
+            probs.RIGHT * Math.log2(probs.RIGHT / uniform)
+          );
+
+          const diversity = ['LEFT', 'CENTER', 'RIGHT'].filter((k) => counts[k] > 0).length / 3;
+          const maxGroup = Math.max(counts.LEFT, counts.CENTER, counts.RIGHT);
+          const exposureFactor = 1 - (maxGroup / total);
+          const balanceScore = (diversity * exposureFactor).toFixed(3);
+
+          const topFreqOutlet = Object.entries(outletsCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
+          const topReadOutlet = Object.entries(outletReadTime).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
+
+          results.push({
+            user_id: userId,
+            exposure: {
+              LEFT: (probs.LEFT * 100).toFixed(1),
+              CENTER: (probs.CENTER * 100).toFixed(1),
+              RIGHT: (probs.RIGHT * 100).toFixed(1),
+            },
+            top_read_outlet: topReadOutlet,
+            top_freq_outlet: topFreqOutlet,
+            shannon_entropy: shannon.toFixed(3),
+            kl_divergence: kl.toFixed(3),
+            balance_score: parseFloat(balanceScore),
+          });
+
+          processed++;
+          if (processed === userIds.length) {
+            res.json(results);
+          }
+        });
+      });
+    });
+  });
+});
+
+// Delete all user interactions and associated recommendations for balance report
+app.delete("/admin/balance-report/:userId", verifyToken, (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
+
+  const userId = req.params.userId;
+
+  // Get all article IDs from interactions of this user
+  const selectInteractionArticleIds = `
+    SELECT id FROM user_interactions
+    WHERE user_id = ?
   `;
 
-  db.all(interactionsQuery, [userId], (err, interactionRows) => {
-    if (err) return res.status(500).json({ error: "Failed to fetch user interactions" });
+  db.all(selectInteractionArticleIds, [userId], (err, rows) => {
+    if (err) {
+      console.error("Failed to fetch interactions:", err);
+      return res.status(500).json({ error: "Failed to fetch interactions" });
+    }
 
-    if (interactionRows.length === 0) {
-      return res.json({
-        political_leaning: "N/A",
-        interactions: { LEFT: 0, CENTER: 0, RIGHT: 0 },
-        unique_outlets_read: 0,
-        most_frequented_sources: [],
-        avg_read_time: { LEFT: "N/A", CENTER: "N/A", RIGHT: "N/A" },
-        reading_behavior_message: "No reading data available.",
-        shannon_entropy: "N/A",
-        kl_divergence: "N/A",
-        balance_score: 0,
-        balance_message: "Not enough data to determine balance.",
+    const articleIds = rows.map(row => row.id);
+    if (articleIds.length === 0) {
+      return res.status(200).json({
+        message: `No interactions found for user ${userId}.`,
+        deletedRecommendations: 0,
+        deletedInteractions: 0,
       });
     }
 
-    // Extract article IDs
-    const articleIds = interactionRows.map(row => row.id);
-    
-    // Query to fetch political leaning and outlet info from news_articles
-    const articlesQuery = `
-      SELECT id, political_leaning, outlet
-      FROM news_articles
-      WHERE id IN (${articleIds.map(() => "?").join(",")})
+    // Delete associated recommendations
+    const placeholders = articleIds.map(() => "?").join(",");
+    const deleteRecommendationsQuery = `
+      DELETE FROM user_recommendations
+      WHERE source_article_id IN (${placeholders}) AND user_id = ?
     `;
 
-    db.all(articlesQuery, articleIds, (err, articleRows) => {
-      if (err) return res.status(500).json({ error: "Failed to fetch article details" });
-
-      const counts = { LEFT: 0, CENTER: 0, RIGHT: 0 };
-      const totalReadTime = { LEFT: 0, CENTER: 0, RIGHT: 0 };
-      const readCounts = { LEFT: 0, CENTER: 0, RIGHT: 0 };
-      const outletsCount = {};
-      const outletReadTime = {};
-      const outlets = new Set();
-      const fullyReadCount = { LEFT: 0, CENTER: 0, RIGHT: 0 };
-      const quickReadCount = { LEFT: 0, CENTER: 0, RIGHT: 0 };
-      
-      // Map articles by ID for quick lookup
-      const articleMap = Object.fromEntries(articleRows.map(article => [article.id, article]));
-
-      // Process interactions
-      interactionRows.forEach(row => {
-        const article = articleMap[row.id];
-        if (!article) return;
-
-        const leaning = article.political_leaning;
-        const readTime = row.read_time_seconds;
-        const interactionType = row.interaction_type;
-
-        // Count read times ONLY for 'read' interactions
-        if (interactionType === "read" && readTime > 0) {
-          totalReadTime[leaning] += readTime;
-          readCounts[leaning] += 1;
-          if (readTime >= FULL_READ_THRESHOLD) fullyReadCount[leaning]++;
-          else if (readTime < FULL_READ_THRESHOLD) quickReadCount[leaning]++;
-        }
-
-        const timeWeight = interactionType === "like"
-        ? LIKE_WEIGHT
-        : Math.max(MIN_READ_WEIGHT, Math.min(MAX_READ_WEIGHT, readTime || 0));
-
-        if (leaning) counts[leaning] += timeWeight;
-
-        if (article.outlet) {
-          outlets.add(article.outlet);
-          outletsCount[article.outlet] = (outletsCount[article.outlet] || 0) + timeWeight;
-        }
-
-        if (interactionType === "read" && readTime > 0 && article.outlet) {
-          outletReadTime[article.outlet] = (outletReadTime[article.outlet] || 0) + readTime;
-        }        
-      });
-
-      // Smoothing to avoid zero probs
-      const epsilon = 1e-10;
-      const total = counts.LEFT + counts.CENTER + counts.RIGHT;
-      const probs = {
-        LEFT: total > 0 ? counts.LEFT / total : epsilon,
-        CENTER: total > 0 ? counts.CENTER / total : epsilon,
-        RIGHT: total > 0 ? counts.RIGHT / total : epsilon
-      };
-
-      // Apply epsilon if any prob is 0
-      Object.keys(probs).forEach(key => {
-        if (probs[key] === 0) probs[key] = epsilon;
-      });
-
-      // Normalize to ensure sum == 1 after smoothing
-      const sumProbs = probs.LEFT + probs.CENTER + probs.RIGHT;
-      probs.LEFT /= sumProbs;
-      probs.CENTER /= sumProbs;
-      probs.RIGHT /= sumProbs;
-
-      // Shannon Entropy
-      const shannonEntropy = -(
-        probs.LEFT * Math.log2(probs.LEFT) +
-        probs.CENTER * Math.log2(probs.CENTER) +
-        probs.RIGHT * Math.log2(probs.RIGHT)
-      );
-
-      // KL Divergence from uniform distribution
-      const uniform = 1 / 3;
-      const klDivergence = (
-        probs.LEFT * Math.log2(probs.LEFT / uniform) +
-        probs.CENTER * Math.log2(probs.CENTER / uniform) +
-        probs.RIGHT * Math.log2(probs.RIGHT / uniform)
-      );
-
-      // Most Frequented Sources
-      const sortedOutlets = Object.entries(outletsCount)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([outlet, count]) => ({ outlet, count }));
-
-      // Top Outlets by Time Read
-      const topOutletsByTimeRead = Object.entries(outletReadTime)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([outlet, time]) => ({ outlet, time_read_seconds: Math.round(time) }));
-
-      // Source Diversity Score
-      const numUniqueOutlets = outlets.size;
-      const diversityFactor = ['LEFT', 'CENTER', 'RIGHT'].filter(k => counts[k] > 0).length / 3;
-      const maxGroupCount = Math.max(counts.LEFT, counts.CENTER, counts.RIGHT);
-      const exposureFactor = 1 - (maxGroupCount / total);
-      const balanceScore = (diversityFactor * exposureFactor).toFixed(3);
-      
-      // Engagement Score
-      const totalReadCount = {
-        LEFT: fullyReadCount.LEFT + quickReadCount.LEFT,
-        CENTER: fullyReadCount.CENTER + quickReadCount.CENTER,
-        RIGHT: fullyReadCount.RIGHT + quickReadCount.RIGHT,
-      };
-      const fullyReadPercentage = {
-        LEFT: totalReadCount.LEFT > 0 ? ((fullyReadCount.LEFT / totalReadCount.LEFT) * 100).toFixed(1) : "0.0",
-        CENTER: totalReadCount.CENTER > 0 ? ((fullyReadCount.CENTER / totalReadCount.CENTER) * 100).toFixed(1) : "0.0",
-        RIGHT: totalReadCount.RIGHT > 0 ? ((fullyReadCount.RIGHT / totalReadCount.RIGHT) * 100).toFixed(1) : "0.0",
-      };
-      const quickReadPercentage = {
-        LEFT: totalReadCount.LEFT > 0 ? ((quickReadCount.LEFT / totalReadCount.LEFT) * 100).toFixed(1) : "0.0",
-        CENTER: totalReadCount.CENTER > 0 ? ((quickReadCount.CENTER / totalReadCount.CENTER) * 100).toFixed(1) : "0.0",
-        RIGHT: totalReadCount.RIGHT > 0 ? ((quickReadCount.RIGHT / totalReadCount.RIGHT) * 100).toFixed(1) : "0.0",
-      };
-      const engagementScore = {
-        LEFT: totalReadCount.LEFT > 0 ? ((fullyReadCount.LEFT / totalReadCount.LEFT) * 100).toFixed(1) : "0.0",
-        CENTER: totalReadCount.CENTER > 0 ? ((fullyReadCount.CENTER / totalReadCount.CENTER) * 100).toFixed(1) : "0.0",
-        RIGHT: totalReadCount.RIGHT > 0 ? ((fullyReadCount.RIGHT / totalReadCount.RIGHT) * 100).toFixed(1) : "0.0",
-      };
-
-      // Compute **Average Read Time (Only for Read Articles)**
-      const avgReadTime = {
-        LEFT: readCounts.LEFT > 0 ? (totalReadTime.LEFT / readCounts.LEFT).toFixed(1) : "N/A",
-        CENTER: readCounts.CENTER > 0 ? (totalReadTime.CENTER / readCounts.CENTER).toFixed(1) : "N/A",
-        RIGHT: readCounts.RIGHT > 0 ? (totalReadTime.RIGHT / readCounts.RIGHT).toFixed(1) : "N/A"
-      };
-
-      // **Reading Engagement Insight**
-      const totalSeconds = totalReadTime.LEFT + totalReadTime.CENTER + totalReadTime.RIGHT;
-      if (totalSeconds === 0) {
-        readingBehaviorMessage = "No reading data available.";
-      } else {
-        const pct = {
-          LEFT: (totalReadTime.LEFT / totalSeconds) * 100,
-          CENTER: (totalReadTime.CENTER / totalSeconds) * 100,
-          RIGHT: (totalReadTime.RIGHT / totalSeconds) * 100
-        };
-
-        const sorted = Object.entries(pct).sort((a, b) => b[1] - a[1]);
-        const [top, second] = sorted;
-        const diff = top[1] - second[1];
-
-        if (diff >= 10) {
-          if (top[0] === "LEFT") {
-            readingBehaviorMessage = "You dedicate significantly more reading time to left-leaning articles. Consider exploring other perspectives for a more balanced view.";
-          } else if (top[0] === "RIGHT") {
-            readingBehaviorMessage = "You spend more time on right-leaning articles. Diversifying your reading across the spectrum could enhance your understanding.";
-          } else {
-            readingBehaviorMessage = "You invest most of your reading time in center-leaning articles. Exploring left and right perspectives may offer additional context.";
-          }
-        } else {
-          readingBehaviorMessage = "Your reading time appears balanced across political leanings.";
-        }
-      }
-      
-      // **Balance Message**
-      let balanceMessage = "You're consuming a diverse mix of political perspectives. Well done!";
-      if (balanceScore < 0.3) {
-        const dominantLeaning = 
-          counts.LEFT > counts.CENTER && counts.LEFT > counts.RIGHT ? "LEFT"
-          : counts.RIGHT > counts.CENTER ? "RIGHT"
-          : "CENTER";
-        balanceMessage = `Your interactions are heavily skewed toward ${dominantLeaning.toLowerCase()}-leaning content. Try branching out to gain a more complete picture.`;
-      } else if (balanceScore < 0.6) {
-        balanceMessage = "You're engaging with more than one perspective, but there's still a noticeable imbalance. A wider variety of sources can improve your news diet.";
+    db.run(deleteRecommendationsQuery, [...articleIds, userId], function(err) {
+      if (err) {
+        console.error("Failed to delete recommendations:", err);
+        return res.status(500).json({ error: "Failed to delete recommendations" });
       }
 
-      res.json({
-        political_leaning: counts.LEFT > counts.CENTER && counts.LEFT > counts.RIGHT ? "LEFT"
-                        : counts.RIGHT > counts.CENTER ? "RIGHT" : "CENTER",
-        interactions: counts,
-        unique_outlets_read: numUniqueOutlets,
-        most_frequented_sources: sortedOutlets,
-        time_read_per_outlet: topOutletsByTimeRead,
-        avg_read_time: avgReadTime,
-        reading_behavior_message: readingBehaviorMessage,
-        engagement_metrics: {
-          fully_read: {
-            LEFT: fullyReadPercentage.LEFT,
-            CENTER: fullyReadPercentage.CENTER,
-            RIGHT: fullyReadPercentage.RIGHT
-          },
-          quick_reads: {
-            LEFT: quickReadPercentage.LEFT,
-            CENTER: quickReadPercentage.CENTER,
-            RIGHT: quickReadPercentage.RIGHT
-          },
-          engagement_score: {
-            LEFT: engagementScore.LEFT,
-            CENTER: engagementScore.CENTER,
-            RIGHT: engagementScore.RIGHT
-          },
-        },
-        shannon_entropy: shannonEntropy.toFixed(3),
-        kl_divergence: klDivergence.toFixed(3),
-        balance_score: parseFloat(balanceScore),
-        balance_message: balanceMessage
+      const deletedRecommendations = this.changes;
+
+      // Delete interactions
+      const deleteInteractionsQuery = `
+        DELETE FROM user_interactions
+        WHERE user_id = ?
+      `;
+
+      db.run(deleteInteractionsQuery, [userId], function(err) {
+        if (err) {
+          console.error("Failed to delete user interactions:", err);
+          return res.status(500).json({ error: "Failed to delete interactions" });
+        }
+
+        resetInteractionsSequence();
+
+        return res.status(200).json({
+          message: `Deleted ${this.changes} interaction(s) and ${deletedRecommendations} recommendation(s) for user ${userId}.`,
+          deletedInteractions: this.changes,
+          deletedRecommendations
+        });
       });
     });
   });

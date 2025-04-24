@@ -12,6 +12,8 @@ import {
   Tr,
   Th,
   Td,
+  VStack,
+  Button,
   Divider,
   SimpleGrid,
   IconButton,
@@ -22,7 +24,7 @@ import {
   Collapse,
   Spinner,
 } from "@chakra-ui/react";
-import { SunIcon, MoonIcon, InfoOutlineIcon, LockIcon, RepeatIcon } from "@chakra-ui/icons";
+import { SunIcon, MoonIcon, InfoOutlineIcon, LockIcon, RepeatIcon, ArrowBackIcon } from "@chakra-ui/icons";
 import { 
   Cell, 
   BarChart, 
@@ -38,14 +40,23 @@ import {
   PolarRadiusAxis,
   ResponsiveContainer 
 } from "recharts";
+import { useParams, useNavigate } from "react-router-dom";
 import GaugeComponent from "react-gauge-component";
 import { GiCapitol, GiBigWave, GiScales } from "react-icons/gi";
 import { motion, AnimatePresence } from "framer-motion";
+
+const primaryColorLight = '#c6001e';
+const primaryColorDark = '#cf2640';
+const primaryHoverLight = '#b0001a';
+const primaryHoverDark = '#d83a52';
+const primaryActiveLight = '#970016';
+const primaryActiveDark = '#e14f64';
 
 import logoBalanceBright from "../assets/logo-balance-bright.png";
 import logoBalanceDark from "../assets/logo-balance-dark.png";
 
 const BalanceReport = () => {
+  const navigate = useNavigate();
   // For development only
   const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:5001`;
 
@@ -55,6 +66,10 @@ const BalanceReport = () => {
   const logo = useColorModeValue(logoBalanceBright, logoBalanceDark);
   const logoHeight = useBreakpointValue({ base: '28px', md: '33px' });
 
+  const primaryColor = useColorModeValue(primaryColorLight, primaryColorDark);
+  const hoverColor = useColorModeValue(primaryHoverLight, primaryHoverDark);
+  const activeColor = useColorModeValue(primaryActiveLight, primaryActiveDark);
+  
   const { colorMode, toggleColorMode } = useColorMode();
 
   const cardBg = useColorModeValue("white", "gray.700");
@@ -95,47 +110,68 @@ const BalanceReport = () => {
     base: "It helps you understand your exposure and preferences in a transparent and structured way.",
     lg: "By combining engagement signals with content diversity metrics, Horizon Balance empowers you to reflect on your reading habits and encourages a more balanced and open news consumption experience. This transparency is key to fostering critical thinking and reducing ideological bias.",
   });
-
-  useEffect(() => {
-    if (!hasFetched.current) {
-      hasFetched.current = true;
-      checkUserStatus();
-    }
-  }, []);
+  
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { userId } = useParams();
 
   const isReportAvailable = (report) => !!report && typeof report === "object";
 
-  const checkUserStatus = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`${BACKEND_URL}/user/status`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      const data = await response.json();
-      setUserStatus(data.status);
-    } catch (error) {
-      setErrorMessage(`Error checking user status: ${error}`);
-    }
-  };
-
   useEffect(() => {
-    const fetchReport = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${BACKEND_URL}/user/balance-report`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        setReport(data);
-      } catch (err) {
-        console.error("Error fetching report:", err);
-      } finally {
-        setLoading(false);
+    const initialize = async () => {
+      const token = localStorage.getItem("token");
+      let isAdminUser = false;
+  
+      if (token) {
+        try {
+          const decoded = JSON.parse(atob(token.split('.')[1]));
+          if (decoded?.role === "admin") {
+            setIsAdmin(true);
+            isAdminUser = true;
+          }
+        } catch (e) {
+          console.error("Failed to decode token", e);
+        }
+      }
+  
+      // Solo se llama una vez al montar
+      if (!hasFetched.current) {
+        hasFetched.current = true;
+  
+        if (isAdminUser) {
+          setUserStatus("returning");
+        } else {
+          try {
+            const response = await fetch(`${BACKEND_URL}/user/status`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await response.json();
+            setUserStatus(data.status);
+          } catch (error) {
+            console.error("Error checking user status:", error);
+          }
+        }
+  
+        try {
+          const url = isAdminUser && userId
+            ? `${BACKEND_URL}/user/balance-report?userId=${userId}`
+            : `${BACKEND_URL}/user/balance-report`;
+  
+          const res = await fetch(url, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+          setReport(data);
+        } catch (err) {
+          console.error("Error fetching report:", err);
+        } finally {
+          setLoading(false);
+        }
       }
     };
-    fetchReport();
-  }, []);
-
+  
+    initialize();
+  }, []);  
+  
   useEffect(() => {
     if (report && frontRef.current) {
       requestAnimationFrame(() => {
@@ -208,6 +244,15 @@ const BalanceReport = () => {
     lg: "This report provides a comprehensive analysis of your news consumption habits, including political exposure, reading engagement, source diversity, and overall information balance.",
   }); 
 
+  const scoreText = useBreakpointValue({
+    base: <>
+      This gauge reflects how diverse your news consumption is in terms of political perspectives. <strong>It does not indicate your political leaning.</strong> 
+    </>,
+    lg: <>
+      This gauge reflects how diverse your news consumption is in terms of political perspectives. <strong>It does not indicate your political leaning.</strong> Even if the needle points <i>left</i> or <i>right</i> visually, it’s only a representation of balance, not ideology.
+    </>,
+  });
+
   const gridColor = useColorModeValue("#B0B0B0", "#888888");
   const axisColor = useColorModeValue("#4A4A4A", "#E0E0E0");
 
@@ -277,7 +322,7 @@ const BalanceReport = () => {
           {loading ? (
             <Flex align="center" justify="center" h="100vh">
               <Spinner size="xl" />
-            <Text ml="4">Loading balance report details...</Text>
+            <Text ml="4">Loading Balance Report details...</Text>
           </Flex>
           ) : userStatus === "new" || !isReportAvailable(report) ? (
             <motion.div
@@ -296,13 +341,45 @@ const BalanceReport = () => {
             </motion.div>
           ) : report ? (
             <>
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0, duration: 0.5 }}
-              >
-                <Text mb="4" textAlign="justify">{headingText}</Text>
-              </motion.div>
+              {!isAdmin && ( 
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0, duration: 0.5 }}
+                >
+                  <Text mb="4" textAlign="justify">{headingText}</Text>
+                </motion.div>
+              )}
+
+              {/* User Details */}
+              {isAdmin && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.5 }}
+                >
+                  <Box mb="4">
+                    <Heading size="md" mb="2" color={textColor}>
+                      User Details
+                    </Heading>
+                    <VStack align="flex-start" spacing="2">
+                      <Text fontSize="md">
+                        <b>Username:</b> {report.username}
+                      </Text>
+                      <Text fontSize="md">
+                        <b>User ID:</b> #{report.user_id}
+                      </Text>
+                      <Text fontSize="md">
+                        <b>Declared Political Leaning:</b> {report.declared_political_leaning}
+                      </Text>
+                    </VStack>
+                  </Box>
+                </motion.div>
+              )}
+
+              {isAdmin && (
+                <Divider mb="4" />
+              )}
 
               {/* Political Exposure */}
               <motion.div
@@ -529,8 +606,12 @@ const BalanceReport = () => {
                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
-                          <Text fontSize="md" textAlign="justify">
-                            {`${report.time_read_per_outlet[0].outlet} is the source you spend the most time reading, with a total of ${report.time_read_per_outlet[0].time_read_seconds} seconds accumulated from reading interactions.`}
+                          <Text textAlign="justify">
+                            <Text as="span" fontWeight="bold">
+                              {report.time_read_per_outlet[0].outlet}
+                            </Text>{" "}
+                            is the source you spend the most time reading, with a total of{" "}
+                            {report.time_read_per_outlet[0].time_read_seconds} seconds accumulated from reading interactions.
                           </Text>
                         </>
                       ) : (
@@ -593,7 +674,11 @@ const BalanceReport = () => {
                             </RadarChart>
                           </ResponsiveContainer>
                           <Text fontSize="md" textAlign="justify">
-                            {`Based on your interaction frequency (likes and reads), ${report.most_frequented_sources[0].outlet} is the source you engaged with most often.`}
+                            Based on your interaction frequency (likes and reads),{" "}
+                            <Text as="span" fontWeight="bold">
+                              {report.most_frequented_sources[0].outlet}
+                            </Text>{" "}
+                            is the source you engaged with most often.
                           </Text>
                         </>
                       ) : (
@@ -621,6 +706,9 @@ const BalanceReport = () => {
               >
                 <Box mb="4">
                   <Heading size="md" mb="4">Overall Information Balance</Heading>
+                  <Text textAlign="justify" mb="4">
+                    {scoreText}
+                  </Text>
                   <Box overflowX="auto" p="2" bg={modelCardBg} borderRadius="md" shadow="md">
                     <Table colorScheme={colorMode === "light" ? "gray" : "whiteAlpha"} mb="4">
                       <Thead>
@@ -722,7 +810,9 @@ const BalanceReport = () => {
                       },
                     }}
                   />
-                    <Text textAlign="center">{report.balance_message}</Text>
+                    {!isAdmin && (
+                      <Text textAlign="center">{report.balance_message}</Text>
+                    )}
                 </Box>
               </motion.div>
             </>
@@ -730,6 +820,27 @@ const BalanceReport = () => {
             <Text fontSize="md" color="gray.400" textAlign="center">Error loading report data.</Text>
           )}
 
+          {/* Navigation Buttons */}
+          {isAdmin && (
+            <Flex justify="center" mt="2" mb="4">              
+              <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                <Button
+                  leftIcon={<ArrowBackIcon />}
+                  size="md"
+                  bg={primaryColor}
+                  color="white"
+                  _hover={{ bg: hoverColor }}
+                  _active={{ bg: activeColor }}
+                  onClick={() =>
+                    navigate( "/admin/profile/my-balance-reports")
+                  }
+                >
+                  All Balance Reports
+                </Button>
+              </motion.div>
+            </Flex>
+          )}
+          
           {/* Transparency Section */}
           <Flex direction="column">
             <Flex align="center" cursor="pointer" onClick={toggleTransparency} color={transparencyColor}>

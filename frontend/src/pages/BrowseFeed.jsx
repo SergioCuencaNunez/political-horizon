@@ -11,6 +11,7 @@ import {
   Select,
   Badge,
   Grid,
+  Divider,
   IconButton,
   useColorMode,
   useColorModeValue,
@@ -225,13 +226,14 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
         });
   
         // Update state
-        setInteractions((prev) => ({
-          ...prev,
-          [id]: null,
-        }));
+        setInteractions((prev) => {
+          const updatedInteractions = { ...prev };
+          delete updatedInteractions[id];
+          return updatedInteractions;
+        });
   
         setInteractionsCount((prev) => prev - 1);
-        return;
+      return;
       }
   
       // Remove previous (if exists and is different)
@@ -264,10 +266,12 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
         [id]: newInteractionType,
       }));
   
+      // If this is a new interaction (previously there was no interaction for this id), increment the count
       if (!prevInteraction) {
         setInteractionsCount((prev) => prev + 1);
       }
-      setReportRefreshTrigger(prev => prev + 1);
+
+      setReportRefreshTrigger((prev) => prev + 1);
     } catch (error) {
       setErrorMessage(`Error storing interaction: ${error}`);
     }
@@ -430,7 +434,7 @@ const getPoliticalIcon = (leaning) => {
               })}
             </Text>
             {userStatus === "new" && <Text mb="4" fontSize="sm" color="gray.500">These are your first 10 articles to help us tune your interests.</Text>}
-            <Flex gap="4" mb="6">
+            <Flex gap="4" mb="4">
               <Input placeholder="Search news..." value={filters.search} onChange={(e) => updateFilters({ search: e.target.value })} />
               <Select value={filters.politicalLeaning} onChange={(e) => updateFilters({ politicalLeaning: e.target.value })}>
                 <option value="All">All</option>
@@ -448,6 +452,8 @@ const getPoliticalIcon = (leaning) => {
               </Select>
             </Flex>
           </motion.div>
+
+          <Divider mb="4" />
           
           <motion.div
             key={animationKey}

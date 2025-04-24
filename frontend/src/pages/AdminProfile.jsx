@@ -54,6 +54,7 @@ import BlurOverlay from "../components/BlurOverlay";
 
 import MyUsers from "./MyUsers";
 import MyInteractions from "./MyInteractions";
+import MyBalanceReports from "./MyBalanceReports";
 import BalanceReport from "./BalanceReport";
 import AccountDetails from "./AccountDetails";
 import NotFound from "../pages/NotFound"; 
@@ -94,6 +95,7 @@ const AdminProfile = () => {
   const [users, setUsers] = useState([]);
   const [interactions, setInteractions] = useState([]);
   const [isLoadingInteractions, setIsLoadingInteractions] = useState(true);
+  const [balanceReports, setBalanceReports] = useState([]);
 
   const [user, setUser] = useState({ username: "", email: "" });
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -358,6 +360,58 @@ useEffect(() => {
     }
   };
 
+  useEffect(() => {
+    const fetchBalanceReports = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/admin/balance-summary`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setBalanceReports(data);
+        } else {
+          console.error("Failed to fetch interactions:", data.error);
+        }
+        setIsLoadingInteractions(false); 
+      } catch (error) {
+        console.error("Error fetching interactions:", error);
+      }
+    };
+
+    fetchBalanceReports();
+  }, [navigate]);
+
+  // Delete all user interactions for balance report
+  const deleteBalanceReport = async (userId) => {
+    const token = localStorage.getItem("token");
+  
+    try {
+      const response = await fetch(`${BACKEND_URL}/admin/balance-report/${userId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+  
+      if (response.ok) {
+        setBalanceReports((prev) => prev.filter((r) => r.user_id !== userId));
+      } else {
+        const errorData = await response.json();
+        console.error("Failed to delete balance report:", errorData.error);
+      }
+    } catch (error) {
+      console.error("Error deleting balance report:", error);
+    }
+  };
+  
   const formatDate = (isoString) => {
     if (!isoString) return "No Available Date";
 
@@ -678,7 +732,7 @@ useEffect(() => {
                         _active={{ color: activeColor }}
                         color={textColor}
                         width="100%"
-                        onClick={() => navigate("/profile/balance-report")}
+                        onClick={() => navigate("/admin/profile/my-balance-reports")}
                       >
                         <HStack>
                           <FaTasks />
@@ -1272,9 +1326,19 @@ useEffect(() => {
               }
             />
             <Route
-              path="/balance-report"
+              path="/balance-report/:userId"
               element={<BalanceReport/>}
-              />
+            />
+            <Route
+              path="/my-balance-reports"
+              element={
+                <MyBalanceReports
+                  users={users}
+                  balanceReports={balanceReports}
+                  deleteBalanceReport={deleteBalanceReport}
+                />
+              }
+            />
             <Route path="/account-details" element={<AccountDetails />} />
             <Route
               path="*"
@@ -1325,7 +1389,7 @@ useEffect(() => {
               </ModalBody>
               <ModalFooter>
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                  <Button colorScheme="red" mr={3} onClick={confirmDeleteUser}>
+                  <Button colorScheme="blue" mr={3} onClick={confirmDeleteUser}>
                     Delete
                   </Button>
                 </motion.div>
