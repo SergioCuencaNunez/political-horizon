@@ -82,9 +82,13 @@ def generate_recommendations():
             else:
                 continue
 
-            cursor.execute("SELECT headline FROM news_articles WHERE id = ?", (article_id,))
-            source_headline = cursor.fetchone()
-            source_headline = source_headline[0] if source_headline else "an article you engaged with"
+            cursor.execute("SELECT headline, outlet FROM news_articles WHERE id = ?", (article_id,))
+            row = cursor.fetchone()
+            if row:
+                source_headline, source_outlet = row
+            else:
+                source_headline = "an article you engaged with"
+                source_outlet = "an unknown source"
 
             recommended_articles = recommend_articles_bias_controlled(article_id, polusa_balanced)
 
@@ -95,6 +99,7 @@ def generate_recommendations():
                         "interaction_type": interaction_type_final,
                         "source_article_id": article_id,
                         "source_article_headline": source_headline,
+                        "source_article_outlet": source_outlet,
                         "date_publish": rec["date_publish"],
                         "headline": rec["headline"],
                         "outlet": rec["outlet"],
