@@ -649,7 +649,8 @@ const getPoliticalIcon = (leaning) => {
                         <Text fontSize={{base: "xs", lg:"sm"}} color={textColor2} mb="2">
                           This article was recommended based on your interest in:
                         </Text>
-                        <Text fontSize={{base: "sm", lg:"md"}} fontWeight="bold" mb="4">"{article.source_article_headline}"</Text>
+                        <Text fontSize={{base: "sm", lg:"md"}} fontWeight="bold" mb="1">"{article.source_article_headline}"</Text>
+                        <Text fontSize={{base: "xs", lg:"sm"}} color={textColor2} fontWeight="semibold" mb="4">{article.source_article_outlet}</Text>
                         <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                           <IconButton
                             icon={<RepeatIcon />}
