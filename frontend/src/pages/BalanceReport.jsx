@@ -240,8 +240,12 @@ const BalanceReport = () => {
   const radarColor = outletColors[topOutletData.outlet];
 
   const headingText = useBreakpointValue({
-    base: "This report provides a detailed analysis of your news consumption habits, including political exposure, and overall information balance.",
-    lg: "This report provides a comprehensive analysis of your news consumption habits, including political exposure, reading engagement, source diversity, and overall information balance.",
+    base:  <>
+      This report provides a <strong>detailed analysis</strong> of your <strong>news consumption habits</strong>, including political exposure, and overall information balance.
+    </>,
+    lg: <>
+      This report provides a <strong>comprehensive analysis</strong> of your <strong>news consumption habits</strong>, including political exposure, reading engagement, source diversity, and overall information balance.
+    </>,
   }); 
 
   const scoreText = useBreakpointValue({
@@ -249,7 +253,7 @@ const BalanceReport = () => {
       This gauge reflects how diverse your news consumption is in terms of political perspectives. <strong>It does not indicate your political leaning.</strong> 
     </>,
     lg: <>
-      This gauge reflects how diverse your news consumption is in terms of political perspectives. <strong>It does not indicate your political leaning.</strong> Even if the needle points <i>left</i> or <i>right</i> visually, it’s only a representation of balance, not ideology.
+      This gauge reflects how diverse your news consumption is in terms of political perspectives. <strong>It does not indicate your political leaning.</strong> Even if the needle points <i>left</i> or <i>right</i> visually, it’s only a <strong>representation of balance</strong>, not ideology.
     </>,
   });
 
