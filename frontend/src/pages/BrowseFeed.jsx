@@ -188,13 +188,13 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
       });
       const data = await response.json();
       setUserStatus(data.status);
-      fetchRandomArticles();
+      fetchNewsArticles();
     } catch (error) {
       setErrorMessage(`Error checking user status: ${error}`);
     }
   };
 
-  const fetchRandomArticles = async () => {
+  const fetchNewsArticles = async () => {
     setLoading(true);
     try {
       const response = await fetch(`${BACKEND_URL_DB}/articles/random`, {
@@ -688,7 +688,7 @@ const getPoliticalIcon = (leaning) => {
                   color={textColor}
                   _hover={{ bg: refreshHoverBg }}
                   _active={{ bg: refreshActiveBg }}
-                  onClick={fetchRandomArticles}
+                  onClick={fetchNewsArticles}
                 >
                   Refresh
                 </Button>
