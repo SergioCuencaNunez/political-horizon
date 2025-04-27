@@ -404,8 +404,8 @@ app.delete("/user/interactions/:id", verifyToken, (req, res) => {
   });
 });
 
-// Fetch 10 random articles if the user is new
-app.get("/articles/random", verifyToken, (req, res) => {
+// Fetch 10 news articles
+app.get("/news/articles", verifyToken, (req, res) => {
   const userQuery = `SELECT political_leaning FROM users WHERE id = ?`;
 
   db.get(userQuery, [req.user.id], (err, userRow) => {

@@ -197,14 +197,14 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
   const fetchNewsArticles = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL_DB}/articles/random`, {
+      const response = await fetch(`${BACKEND_URL_DB}/news/articles`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       const data = await response.json();
       setArticles(data);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      setErrorMessage(`Error fetching random articles: ${error}`);
+      setErrorMessage(`Error fetching news articles: ${error}`);
     } finally {
       setLoading(false);
     }
