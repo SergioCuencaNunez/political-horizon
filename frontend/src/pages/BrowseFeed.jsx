@@ -433,7 +433,6 @@ const getPoliticalIcon = (leaning) => {
                 lg: "Your recommendations are personalized based on your reading history while ensuring a diverse and balanced perspective, helping you explore different viewpoints and stay informed with a well-rounded news feed.",
               })}
             </Text>
-            {userStatus === "new" && <Text mb="4" fontSize="sm" color="gray.500">These are your first 10 articles to help us tune your interests.</Text>}
             <Flex gap="4" mb="4">
               <Input placeholder="Search news..." value={filters.search} onChange={(e) => updateFilters({ search: e.target.value })} />
               <Select value={filters.politicalLeaning} onChange={(e) => updateFilters({ politicalLeaning: e.target.value })}>
