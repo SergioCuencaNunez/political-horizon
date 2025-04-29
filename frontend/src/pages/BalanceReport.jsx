@@ -133,7 +133,6 @@ const BalanceReport = () => {
         }
       }
   
-      // Solo se llama una vez al montar
       if (!hasFetched.current) {
         hasFetched.current = true;
   
