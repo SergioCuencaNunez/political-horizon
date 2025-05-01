@@ -677,7 +677,7 @@ const BalanceReport = () => {
                             </RadarChart>
                           </ResponsiveContainer>
                           <Text fontSize="md" textAlign="justify">
-                            Based on your interaction frequency (likes and reads),{" "}
+                            Based on your interaction frequency (likes, dislikes and reads),{" "}
                             <Text as="span" fontWeight="bold">
                               {report.most_frequented_sources[0].outlet}
                             </Text>{" "}
