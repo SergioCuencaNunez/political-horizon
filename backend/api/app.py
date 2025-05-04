@@ -87,8 +87,8 @@ def generate_recommendations():
             if row:
                 source_headline, source_outlet = row
             else:
-                source_headline = "an article you engaged with"
-                source_outlet = "an unknown source"
+                source_headline = "An article you engaged with"
+                source_outlet = "An unknown source"
 
             recommended_articles = recommend_articles_bias_controlled(article_id, polusa_balanced)
 
