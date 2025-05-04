@@ -476,6 +476,7 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
   const MIN_READ_WEIGHT = 10;       // Minimum value for short reads
   const MAX_READ_WEIGHT = 180;      // Maximum value for long reads
   const LIKE_WEIGHT = READ_TIME_THRESHOLD; // A like is considered a 2-minute read
+  const DISLIKE_WEIGHT = 30;        // A dislike is considered only a 30s read
 
   const userQuery = `SELECT id, username, political_leaning FROM users WHERE id = ?`;
   db.get(userQuery, [userId], (err, row) => {
@@ -487,7 +488,7 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
     const interactionsQuery = `
       SELECT id, read_time_seconds, interaction_type
       FROM user_interactions
-      WHERE user_id = ? AND ((interaction_type = 'read') OR interaction_type = 'like')
+      WHERE user_id = ?
     `;
 
     db.all(interactionsQuery, [userId], (err, interactionRows) => {
@@ -550,9 +551,12 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
             else if (readTime < FULL_READ_THRESHOLD) quickReadCount[leaning]++;
           }
 
-          const timeWeight = interactionType === "like"
-          ? LIKE_WEIGHT
-          : Math.max(MIN_READ_WEIGHT, Math.min(MAX_READ_WEIGHT, readTime || 0));
+          const timeWeight =
+            interactionType === "like"
+              ? LIKE_WEIGHT
+              : interactionType === "dislike"
+              ? DISLIKE_WEIGHT
+              : Math.max(MIN_READ_WEIGHT, Math.min(MAX_READ_WEIGHT, readTime || 0));
 
           if (leaning) counts[leaning] += timeWeight;
 
@@ -729,6 +733,12 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
 });
 
 app.get("/admin/balance-summary", verifyToken, (req, res) => {
+  const READ_TIME_THRESHOLD = 120;  // Interesting Read
+  const MIN_READ_WEIGHT = 10;       // Minimum value for short reads
+  const MAX_READ_WEIGHT = 180;      // Maximum value for long reads
+  const LIKE_WEIGHT = READ_TIME_THRESHOLD; // A like is considered a 2-minute read
+  const DISLIKE_WEIGHT = 30;        // A dislike is considered only a 30s read
+
   if (req.user.role !== "admin") {
     return res.status(403).json({ error: "Access denied. Only admins can access this route." });
   }
@@ -746,7 +756,7 @@ app.get("/admin/balance-summary", verifyToken, (req, res) => {
       const interactionsQuery = `
         SELECT id, read_time_seconds, interaction_type
         FROM user_interactions
-        WHERE user_id = ? AND (interaction_type = 'read' OR interaction_type = 'like')
+        WHERE user_id = ?
       `;
 
       db.all(interactionsQuery, [userId], (err, interactions) => {
@@ -790,7 +800,12 @@ app.get("/admin/balance-summary", verifyToken, (req, res) => {
             if (!article) return;
 
             const leaning = article.political_leaning;
-            const timeWeight = row.interaction_type === "like" ? 120 : Math.max(10, Math.min(180, row.read_time_seconds || 0));
+            const timeWeight =
+            row.interaction_type === "like"
+              ? LIKE_WEIGHT
+              : row.interaction_type === "dislike"
+              ? DISLIKE_WEIGHT
+              : Math.max(MIN_READ_WEIGHT, Math.min(MAX_READ_WEIGHT, row.read_time_seconds || 0));
 
             counts[leaning] += timeWeight;
 

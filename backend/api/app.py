@@ -18,7 +18,7 @@ polusa_balanced = pd.read_csv("backend/data/polusa_balanced.csv", header=0)
 
 # Minimum seconds to consider "interested"
 READ_TIME_INTERESTED = 120
-READ_TIME_NOT_INTERESTED = 60
+READ_TIME_NOT_INTERESTED = 30
 
 def verify_token(func):
     @wraps(func)
