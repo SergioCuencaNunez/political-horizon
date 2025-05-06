@@ -592,17 +592,17 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
 
         // Shannon Entropy
         const shannonEntropy = -(
-          probs.LEFT * Math.log2(probs.LEFT) +
-          probs.CENTER * Math.log2(probs.CENTER) +
-          probs.RIGHT * Math.log2(probs.RIGHT)
+          probs.LEFT * Math.log(probs.LEFT) +
+          probs.CENTER * Math.log(probs.CENTER) +
+          probs.RIGHT * Math.log(probs.RIGHT)
         );
 
         // KL Divergence from uniform distribution
         const uniform = 1 / 3;
         const klDivergence = (
-          probs.LEFT * Math.log2(probs.LEFT / uniform) +
-          probs.CENTER * Math.log2(probs.CENTER / uniform) +
-          probs.RIGHT * Math.log2(probs.RIGHT / uniform)
+          probs.LEFT * Math.log(probs.LEFT / uniform) +
+          probs.CENTER * Math.log(probs.CENTER / uniform) +
+          probs.RIGHT * Math.log(probs.RIGHT / uniform)
         );
 
         // Most Frequented Sources

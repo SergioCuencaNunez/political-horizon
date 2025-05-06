@@ -5,7 +5,7 @@ import sqlite3
 import jwt
 from functools import wraps
 import pytz
-from datetime import datetime, timezone
+from datetime import datetime
 from backend.models.recommendation_function import recommend_articles_bias_controlled
 
 app = Flask(__name__)
