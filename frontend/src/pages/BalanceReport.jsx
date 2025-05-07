@@ -140,7 +140,7 @@ const BalanceReport = () => {
           setUserStatus("returning");
         } else {
           try {
-            const response = await fetch(`${BACKEND_URL}/user/status`, {
+            const response = await fetch(`${BACKEND_URL}/status`, {
               headers: { Authorization: `Bearer ${token}` },
             });
             const data = await response.json();
@@ -152,8 +152,8 @@ const BalanceReport = () => {
   
         try {
           const url = isAdminUser && userId
-            ? `${BACKEND_URL}/user/balance-report?userId=${userId}`
-            : `${BACKEND_URL}/user/balance-report`;
+            ? `${BACKEND_URL}/balance-report?userId=${userId}`
+            : `${BACKEND_URL}/balance-report`;
   
           const res = await fetch(url, {
             headers: { Authorization: `Bearer ${token}` },

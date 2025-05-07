@@ -183,7 +183,7 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
   const checkUserStatus = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL_DB}/user/status`, {
+      const response = await fetch(`${BACKEND_URL_DB}/status`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       const data = await response.json();
@@ -197,7 +197,7 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
   const fetchNewsArticles = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL_DB}/news/articles`, {
+      const response = await fetch(`${BACKEND_URL_DB}/news-articles`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       const data = await response.json();
@@ -218,7 +218,7 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
       // Toggle off (same interaction clicked again)
       if (prevInteraction === newInteractionType) {
         // DELETE interaction
-        await fetch(`${BACKEND_URL_DB}/user/interactions/${id}`, {
+        await fetch(`${BACKEND_URL_DB}/interactions/${id}`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -238,7 +238,7 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
   
       // Remove previous (if exists and is different)
       if (prevInteraction && prevInteraction !== newInteractionType) {
-        await fetch(`${BACKEND_URL_DB}/user/interactions/${id}`, {
+        await fetch(`${BACKEND_URL_DB}/interactions/${id}`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -247,7 +247,7 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
       }
   
       // POST new interaction
-      await fetch(`${BACKEND_URL_DB}/user/interactions`, {
+      await fetch(`${BACKEND_URL_DB}/interactions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -296,7 +296,7 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
       try {
         const token = localStorage.getItem("token");
         
-        const response = await fetch(`${BACKEND_URL_API}/user/recommendations`, {
+        const response = await fetch(`${BACKEND_URL_API}/recommendations`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -320,7 +320,7 @@ const BrowseFeed = ({ setReportRefreshTrigger }) => {
               setReportRefreshTrigger(prev => prev + 1);
           
               try {
-                const statusResponse = await fetch(`${BACKEND_URL_DB}/user/status`, {
+                const statusResponse = await fetch(`${BACKEND_URL_DB}/status`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
                 const statusData = await statusResponse.json();

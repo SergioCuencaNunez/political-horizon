@@ -177,8 +177,8 @@ app.delete("/delete-account", verifyToken, (req, res) => {
       return res.status(404).json({ error: "Account not found." });
     }
 
-    const deleteInteractions = "DELETE FROM user_interactions WHERE user_id = ?";
-    const deleteRecommendations = "DELETE FROM user_recommendations WHERE user_id = ?";
+    const deleteInteractions = "DELETE FROM interactions WHERE user_id = ?";
+    const deleteRecommendations = "DELETE FROM recommendations WHERE user_id = ?";
     db.run(deleteInteractions, [userId], (err) => {
       if (err) console.error("Failed to delete interactions:", err.message);
     });
@@ -236,8 +236,8 @@ app.delete("/users/:id", verifyToken, (req, res) => {
       return res.status(404).json({ error: "User not found." });
     }
 
-    const deleteInteractions = "DELETE FROM user_interactions WHERE user_id = ?";
-    const deleteRecommendations = "DELETE FROM user_recommendations WHERE user_id = ?";
+    const deleteInteractions = "DELETE FROM interactions WHERE user_id = ?";
+    const deleteRecommendations = "DELETE FROM recommendations WHERE user_id = ?";
     db.run(deleteInteractions, [userId], (err) => {
       if (err) console.error("Failed to delete interactions:", err.message);
     });
@@ -250,9 +250,9 @@ app.delete("/users/:id", verifyToken, (req, res) => {
 });
 
 // Check user status for recommendations (new or returning)
-app.get("/user/status", verifyToken, (req, res) => {
+app.get("/status", verifyToken, (req, res) => {
   const query = `
-    SELECT COUNT(*) AS count FROM user_recommendations WHERE user_id = ?;
+    SELECT COUNT(*) AS count FROM recommendations WHERE user_id = ?;
   `;
 
   db.get(query, [req.user.id], (err, row) => {
@@ -267,7 +267,7 @@ app.get("/user/status", verifyToken, (req, res) => {
 });
 
 // Store user interactions with articles
-app.post("/user/interactions", verifyToken, (req, res) => {
+app.post("/interactions", verifyToken, (req, res) => {
   const { id, interaction_type, read_time_seconds } = req.body;
 
   if (!id || !interaction_type) {
@@ -278,7 +278,7 @@ app.post("/user/interactions", verifyToken, (req, res) => {
   const localTime = DateTime.now().setZone("Europe/Madrid").toFormat("yyyy-MM-dd HH:mm:ss");
 
   const query = `
-    INSERT INTO user_interactions (id, user_id, interaction_type, read_time_seconds, interaction_timestamp)
+    INSERT INTO interactions (id, user_id, interaction_type, read_time_seconds, interaction_timestamp)
     VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(id, user_id) DO UPDATE SET
       interaction_type = excluded.interaction_type,
@@ -293,11 +293,11 @@ app.post("/user/interactions", verifyToken, (req, res) => {
 });
 
 // Fetch user interactions along with recommendations and interacted news details
-app.get("/user/interactions", verifyToken, (req, res) => {
+app.get("/interactions", verifyToken, (req, res) => {
   const isAdmin = req.user.role === "admin";
   const interactionsQuery = isAdmin
-    ? `SELECT * FROM user_interactions ORDER BY interaction_timestamp DESC`
-    : `SELECT * FROM user_interactions WHERE user_id = ? ORDER BY interaction_timestamp DESC`;
+    ? `SELECT * FROM interactions ORDER BY interaction_timestamp DESC`
+    : `SELECT * FROM interactions WHERE user_id = ? ORDER BY interaction_timestamp DESC`;
   
   const params = isAdmin ? [] : [req.user.id];
 
@@ -325,12 +325,12 @@ app.get("/user/interactions", verifyToken, (req, res) => {
 
       const recommendationsQuery = isAdmin
       ? `
-        SELECT * FROM user_recommendations
+        SELECT * FROM recommendations
         WHERE source_article_id IN (${placeholders})
         ORDER BY source_article_id, date_publish DESC;
       `
       : `
-        SELECT * FROM user_recommendations
+        SELECT * FROM recommendations
         WHERE user_id = ? AND source_article_id IN (${placeholders})
         ORDER BY source_article_id, date_publish DESC;
       `;
@@ -362,8 +362,8 @@ app.get("/user/interactions", verifyToken, (req, res) => {
 const resetInteractionsSequence = () => {
   const query = `
     UPDATE sqlite_sequence
-    SET seq = (SELECT MAX(id) FROM user_interactions)
-    WHERE name = 'user_interactions';
+    SET seq = (SELECT MAX(id) FROM interactions)
+    WHERE name = 'interactions';
   `;
 
   db.run(query, (err) => {
@@ -376,13 +376,13 @@ const resetInteractionsSequence = () => {
 };
 
 // Delete user interaction and associated recommendations
-app.delete("/user/interactions/:id", verifyToken, (req, res) => {
+app.delete("/interactions/:id", verifyToken, (req, res) => {
   const { id } = req.params;
 
   const isAdmin = req.user.role === "admin";
   const deleteRecommendationsQuery = isAdmin
-    ? "DELETE FROM user_recommendations WHERE source_article_id = ?"
-    : "DELETE FROM user_recommendations WHERE source_article_id = ? AND user_id = ?";
+    ? "DELETE FROM recommendations WHERE source_article_id = ?"
+    : "DELETE FROM recommendations WHERE source_article_id = ? AND user_id = ?";
 
   const recommendationsParams = isAdmin ? [id] : [id, req.user.id];
 
@@ -391,8 +391,8 @@ app.delete("/user/interactions/:id", verifyToken, (req, res) => {
 
     // Delete the interaction itself
     const deleteInteractionQuery = isAdmin
-    ? "DELETE FROM user_interactions WHERE id = ?"
-    : "DELETE FROM user_interactions WHERE id = ? AND user_id = ?";
+    ? "DELETE FROM interactions WHERE id = ?"
+    : "DELETE FROM interactions WHERE id = ? AND user_id = ?";
 
     const interactionsParams = isAdmin ? [id] : [id, req.user.id];
     db.run(deleteInteractionQuery, interactionsParams, function (err) {  
@@ -409,7 +409,7 @@ app.delete("/user/interactions/:id", verifyToken, (req, res) => {
 });
 
 // Fetch 10 news articles
-app.get("/news/articles", verifyToken, (req, res) => {
+app.get("/news-articles", verifyToken, (req, res) => {
   const userQuery = `SELECT political_leaning FROM users WHERE id = ?`;
 
   db.get(userQuery, [req.user.id], (err, userRow) => {
@@ -469,7 +469,7 @@ app.get("/news/articles", verifyToken, (req, res) => {
 });
 
 // Get the user's balance report
-app.get("/user/balance-report", verifyToken, (req, res) => {
+app.get("/balance-report", verifyToken, (req, res) => {
   const requestedUserId = req.query.userId;
   const isAdmin = req.user.role === "admin";
   const userId = isAdmin && requestedUserId ? parseInt(requestedUserId) : req.user.id;
@@ -491,7 +491,7 @@ app.get("/user/balance-report", verifyToken, (req, res) => {
 
     const interactionsQuery = `
       SELECT id, read_time_seconds, interaction_type
-      FROM user_interactions
+      FROM interactions
       WHERE user_id = ?
     `;
 
@@ -759,7 +759,7 @@ app.get("/admin/balance-summary", verifyToken, (req, res) => {
     userIds.forEach((userId) => {
       const interactionsQuery = `
         SELECT id, read_time_seconds, interaction_type
-        FROM user_interactions
+        FROM interactions
         WHERE user_id = ?
       `;
 
@@ -893,7 +893,7 @@ app.delete("/admin/balance-report/:userId", verifyToken, (req, res) => {
 
   // Get all article IDs from interactions of this user
   const selectInteractionArticleIds = `
-    SELECT id FROM user_interactions
+    SELECT id FROM interactions
     WHERE user_id = ?
   `;
 
@@ -915,7 +915,7 @@ app.delete("/admin/balance-report/:userId", verifyToken, (req, res) => {
     // Delete associated recommendations
     const placeholders = articleIds.map(() => "?").join(",");
     const deleteRecommendationsQuery = `
-      DELETE FROM user_recommendations
+      DELETE FROM recommendations
       WHERE source_article_id IN (${placeholders}) AND user_id = ?
     `;
 
@@ -929,7 +929,7 @@ app.delete("/admin/balance-report/:userId", verifyToken, (req, res) => {
 
       // Delete interactions
       const deleteInteractionsQuery = `
-        DELETE FROM user_interactions
+        DELETE FROM interactions
         WHERE user_id = ?
       `;
 
@@ -971,11 +971,11 @@ app.get("/admin/profile", verifyToken, (req, res) => {
       if (err) return res.status(500).json({ error: "Error fetching users count" });
       overview.totalUsers = row.totalUsers;
 
-      db.get("SELECT COUNT(*) as totalInteractions FROM user_interactions", [], (err, row) => {
+      db.get("SELECT COUNT(*) as totalInteractions FROM interactions", [], (err, row) => {
         if (err) return res.status(500).json({ error: "Error fetching user interactions count" });
         overview.totalInteractions = row.totalInteractions;
 
-        db.get("SELECT COUNT(*) as totalRecommendations FROM user_recommendations", [], (err, row) => {
+        db.get("SELECT COUNT(*) as totalRecommendations FROM recommendations", [], (err, row) => {
           if (err) return res.status(500).json({ error: "Error fetching user recommendations count" });
           overview.totalRecommendations = row.totalRecommendations;
 

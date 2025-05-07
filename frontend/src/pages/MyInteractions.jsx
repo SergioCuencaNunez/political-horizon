@@ -106,7 +106,7 @@ const MyInteractions = ({ interactions, deleteInteraction }) => {
   const checkUserStatus = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/user/status`, {
+      const response = await fetch(`${BACKEND_URL}/status`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       const data = await response.json();

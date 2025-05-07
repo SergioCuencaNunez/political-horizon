@@ -40,7 +40,7 @@ def verify_token(func):
     return wrapper
 
 # Generates personalized recommendations based on user's interactions
-@app.route("/user/recommendations", methods=["POST"])
+@app.route("/recommendations", methods=["POST"])
 @verify_token
 def generate_recommendations():
     user_id = request.user.get("id")
@@ -59,13 +59,13 @@ def generate_recommendations():
         if last_recommendation_time:
             cursor.execute("""
                 SELECT id, interaction_type, read_time_seconds 
-                FROM user_interactions 
+                FROM interactions 
                 WHERE user_id = ? AND interaction_timestamp > ?
             """, (user_id, last_recommendation_time))
         else:
             cursor.execute("""
                 SELECT id, interaction_type, read_time_seconds 
-                FROM user_interactions 
+                FROM interactions 
                 WHERE user_id = ?
             """, (user_id,))
 
@@ -110,7 +110,7 @@ def generate_recommendations():
         for rec in recommendations:
             # Check if the recommendation already exists
             cursor.execute("""
-                SELECT 1 FROM user_recommendations
+                SELECT 1 FROM recommendations
                 WHERE user_id = ? AND id = ?
             """, (user_id, rec["id"]))
             
@@ -120,7 +120,7 @@ def generate_recommendations():
 
             # If not exists, insert the recommendation
             cursor.execute("""
-                INSERT INTO user_recommendations (
+                INSERT INTO recommendations (
                     id, user_id, interaction_type, source_article_id,
                     source_article_headline, date_publish, headline, outlet, url, political_leaning
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

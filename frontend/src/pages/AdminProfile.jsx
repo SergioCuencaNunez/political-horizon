@@ -130,7 +130,7 @@ const AdminProfile = () => {
   const checkUserStatus = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/user/status`, {
+      const response = await fetch(`${BACKEND_URL}/status`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       const data = await response.json();
@@ -307,7 +307,7 @@ useEffect(() => {
       }
 
       try {
-        const response = await fetch(`${BACKEND_URL}/user/interactions`, {
+        const response = await fetch(`${BACKEND_URL}/interactions`, {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -345,7 +345,7 @@ useEffect(() => {
   const deleteInteraction = async (id) => {
     const token = localStorage.getItem("token");
     try {
-      const response = await fetch(`${BACKEND_URL}/user/interactions/${id}`, {
+      const response = await fetch(`${BACKEND_URL}/interactions/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

@@ -122,7 +122,7 @@ const Profile = () => {
   const checkUserStatus = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/user/status`, {
+      const response = await fetch(`${BACKEND_URL}/status`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       const data = await response.json();
@@ -230,7 +230,7 @@ const Profile = () => {
       }
 
       try {
-        const response = await fetch(`${BACKEND_URL}/user/interactions`, {
+        const response = await fetch(`${BACKEND_URL}/interactions`, {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -268,7 +268,7 @@ const Profile = () => {
   const deleteInteraction = async (id) => {
     const token = localStorage.getItem("token");
     try {
-      const response = await fetch(`${BACKEND_URL}/user/interactions/${id}`, {
+      const response = await fetch(`${BACKEND_URL}/interactions/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -341,7 +341,7 @@ const Profile = () => {
     const fetchReport = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(`${BACKEND_URL}/user/balance-report`, {
+        const res = await fetch(`${BACKEND_URL}/balance-report`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
