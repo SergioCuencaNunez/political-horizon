@@ -278,8 +278,12 @@ app.post("/user/interactions", verifyToken, (req, res) => {
   const localTime = DateTime.now().setZone("Europe/Madrid").toFormat("yyyy-MM-dd HH:mm:ss");
 
   const query = `
-    INSERT INTO user_interactions (id, user_id, interaction_type, read_time_seconds, interaction_timestamp) 
+    INSERT INTO user_interactions (id, user_id, interaction_type, read_time_seconds, interaction_timestamp)
     VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(id, user_id) DO UPDATE SET
+      interaction_type = excluded.interaction_type,
+      read_time_seconds = excluded.read_time_seconds,
+      interaction_timestamp = excluded.interaction_timestamp
   `;
 
   db.run(query, [id, req.user.id, interaction_type, read_time_seconds || 0, localTime], function (err) {

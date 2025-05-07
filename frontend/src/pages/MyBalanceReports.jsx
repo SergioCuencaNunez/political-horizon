@@ -225,7 +225,7 @@ const MyBalanceReports = ({ users, balanceReports, deleteBalanceReport }) => {
                         isNaN(balanceReport.kl_divergence);
 
                       return(
-                        <Box key={user.id} overflow="hidden" width="100%">
+                        <Box key={user.id} overflow={{base: "hidden", lg: "visible"}} width="100%">
                           <motion.div
                             initial={{ opacity: 0, y: 30 }}
                             animate={{ opacity: 1, y: 0 }}
